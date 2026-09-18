@@ -8,11 +8,14 @@ import { Header } from '@/components/layout/Header';
 import { FloatingDock } from '@/components/discovery/FloatingDock';
 import { DiscoveredFeed } from '@/components/discovery/DiscoveredFeed';
 import { CorrespondenceDrawer } from '@/components/agent/CorrespondenceDrawer';
+import { ScoutFilterDrawer } from '@/components/discovery/ScoutFilterDrawer';
 import { LocalEvent } from '@/types';
 
 export function PageClient() {
   const [isFeedOpen, setIsFeedOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [autoInquire, setAutoInquire] = useState(true);
 
   const {
     events,
@@ -26,6 +29,16 @@ export function PageClient() {
     unreadCount,
     sendEventInquiry,
   } = useAgentMail();
+
+  const handleResetDefaults = () => {
+    updateFilters({
+      radiusKm: 20,
+      category: 'all',
+      onlyFree: false,
+      minScore: 80,
+    });
+    setAutoInquire(true);
+  };
 
   const handleTriggerDiscovery = () => {
     setIsFeedOpen(true);
@@ -65,6 +78,7 @@ export function PageClient() {
       <Header
         onOpenDrawer={() => setIsDrawerOpen(true)}
         unreadCount={unreadCount}
+        onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
       />
 
       {/* Hero & Floating Dock */}
@@ -101,7 +115,18 @@ export function PageClient() {
         />
       </div>
 
-      {/* Correspondence Drawer */}
+      {/* Scout Tuning Filter Drawer (Left) */}
+      <ScoutFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        filters={filters}
+        onUpdateFilters={updateFilters}
+        autoInquire={autoInquire}
+        onToggleAutoInquire={() => setAutoInquire(!autoInquire)}
+        onResetDefaults={handleResetDefaults}
+      />
+
+      {/* Correspondence Drawer (Right) */}
       <CorrespondenceDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
