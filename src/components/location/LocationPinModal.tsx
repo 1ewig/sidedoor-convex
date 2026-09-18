@@ -5,6 +5,7 @@ import { X, MapPin, Loader2, Check, Search, Crosshair } from 'lucide-react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Coordinates } from '@/types';
 import { useLocationPinMap } from '@/hooks/useLocationPinMap';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 export interface LocationPinModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function LocationPinModal({
   onConfirm,
   onLocateMe,
 }: LocationPinModalProps) {
+  useLockBodyScroll(isOpen);
   const {
     mapContainerRef,
     selectedCoords,

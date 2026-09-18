@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SearchFilterState, EventCategory } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 interface ScoutFilterDrawerProps {
   isOpen: boolean;
@@ -84,6 +85,8 @@ export function ScoutFilterDrawer({
   onUpdateFilters,
   onResetDefaults,
 }: ScoutFilterDrawerProps) {
+  useLockBodyScroll(isOpen);
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;

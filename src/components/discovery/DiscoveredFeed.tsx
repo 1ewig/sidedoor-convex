@@ -26,9 +26,6 @@ export function DiscoveredFeed({
             ({events.length} results)
           </span>
         </div>
-        <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)] uppercase tracking-wider">
-          Firecrawl &amp; Gemini 3.5
-        </span>
       </div>
 
       {/* Events List */}

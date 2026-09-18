@@ -13,6 +13,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { LocalEvent } from '@/types';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 interface EventDetailModalProps {
   event: LocalEvent | null;
@@ -36,6 +37,7 @@ export function EventDetailModal({
   onClose,
   onSendAgentMail,
 }: EventDetailModalProps) {
+  useLockBodyScroll(isOpen);
   useEffect(() => {
     if (!isOpen) return;
 

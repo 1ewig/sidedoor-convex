@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Mail } from 'lucide-react';
 import { EmailThread } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 interface OutboxDrawerProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export function OutboxDrawer({
   threads,
   onSendMessage,
 }: OutboxDrawerProps) {
+  useLockBodyScroll(isOpen);
+
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
 
