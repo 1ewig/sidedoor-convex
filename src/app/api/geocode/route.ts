@@ -20,18 +20,17 @@ export async function GET(req: NextRequest) {
       if (res.ok) {
         const data = await res.json();
         const addr = data.address || {};
-        const neighborhood = addr.neighbourhood || addr.suburb || addr.quarter || addr.district;
-        const city = addr.city || addr.town || addr.village || addr.municipality || addr.county;
-        const state = addr.state || addr.region;
-        const country = addr.country;
+        const city = addr.city || addr.town || addr.municipality || addr.county;
+        const state = addr.state || addr.region || addr.country;
+        const neighborhood = addr.neighbourhood || addr.suburb || addr.quarter;
 
         let label = '';
-        if (neighborhood && city) {
-          label = `${neighborhood}, ${city}`;
-        } else if (city && state) {
+        if (city && state) {
           label = `${city}, ${state}`;
         } else if (city) {
-          label = `${city}, ${country}`;
+          label = city;
+        } else if (neighborhood && state) {
+          label = `${neighborhood}, ${state}`;
         } else if (data.name) {
           label = data.name;
         } else {
