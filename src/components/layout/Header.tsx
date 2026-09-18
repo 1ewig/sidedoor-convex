@@ -1,6 +1,5 @@
 import { Mail, SlidersHorizontal } from 'lucide-react';
 import { LocationAnchor } from './LocationAnchor';
-import { Coordinates } from '@/types';
 
 interface HeaderProps {
   onOpenDrawer: () => void;
@@ -9,8 +8,6 @@ interface HeaderProps {
   locationLabel: string;
   isLocating: boolean;
   onLocateMe: () => void;
-  onSelectLocation: (label: string, coords?: Coordinates) => void;
-  onSearchLocations?: (query: string) => Promise<any>;
   onOpenMapModal?: () => void;
   locationError?: string | null;
 }
@@ -22,13 +19,11 @@ export function Header({
   locationLabel,
   isLocating,
   onLocateMe,
-  onSelectLocation,
-  onSearchLocations,
   onOpenMapModal,
   locationError,
 }: HeaderProps) {
   return (
-    <header className="relative z-10 w-full px-6 sm:px-8 py-5 sm:py-7 flex flex-wrap items-center justify-between gap-3">
+    <header className="relative z-30 w-full px-6 sm:px-8 py-5 sm:py-7 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <span className="font-serif text-2xl tracking-tight text-[var(--theme-text-primary)]">
           SideDoor
@@ -45,8 +40,6 @@ export function Header({
           locationLabel={locationLabel}
           isLocating={isLocating}
           onLocateMe={onLocateMe}
-          onSelectLocation={onSelectLocation}
-          onSearchLocations={onSearchLocations}
           onOpenMapModal={onOpenMapModal}
           error={locationError}
         />
