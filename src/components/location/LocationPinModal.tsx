@@ -30,14 +30,12 @@ export function LocationPinModal({
     mapContainerRef,
     selectedCoords,
     resolvedLabel,
-    currentRadius,
     isResolvingAddress,
     isLocating,
     isMapReady,
     searchQuery,
     searchResults,
     isSearching,
-    handleRadiusChange,
     handleFlyToGps,
     handleSearchChange,
     handleSelectSearchResult,
@@ -165,25 +163,6 @@ export function LocationPinModal({
               <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)] px-1.5 py-0.5 rounded-md bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)]">
                 {selectedCoords.lat.toFixed(4)}°, {selectedCoords.lng.toFixed(4)}°
               </span>
-            </div>
-
-            {/* Perimeter Radius Slider */}
-            <div className="mt-2 flex items-center gap-3">
-              <span className="text-[var(--text-2xs)] font-medium text-[var(--theme-text-muted)] font-sans shrink-0">
-                Radius:{' '}
-                <strong className="text-[var(--theme-text-primary)] font-mono">
-                  {currentRadius} km
-                </strong>
-              </span>
-              <input
-                type="range"
-                min="2"
-                max="100"
-                step="1"
-                value={currentRadius}
-                onChange={(e) => handleRadiusChange(Number(e.target.value))}
-                className="w-36 sm:w-48 h-1.5 bg-[var(--theme-border-subtle)] rounded-lg appearance-none cursor-pointer accent-[var(--theme-brand-accent)]"
-              />
             </div>
           </div>
 

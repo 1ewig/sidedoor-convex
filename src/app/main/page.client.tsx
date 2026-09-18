@@ -8,7 +8,7 @@ import { ShadowOverlay } from '@/components/layout/ShadowOverlay';
 import { Header } from '@/components/layout/Header';
 import { FloatingDock } from '@/components/discovery/FloatingDock';
 import { DiscoveredFeed } from '@/components/discovery/DiscoveredFeed';
-import { CorrespondenceDrawer } from '@/components/agent/CorrespondenceDrawer';
+import { OutboxDrawer } from '@/components/agent/OutboxDrawer';
 import { ScoutFilterDrawer } from '@/components/discovery/ScoutFilterDrawer';
 import { LocationPinModal } from '@/components/location/LocationPinModal';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
@@ -141,8 +141,8 @@ export function PageClient() {
         onResetDefaults={handleResetDefaults}
       />
 
-      {/* Correspondence Drawer (Right) */}
-      <CorrespondenceDrawer
+      {/* AgentMail Outbox Drawer (Right) */}
+      <OutboxDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         threads={threads}
@@ -156,9 +156,8 @@ export function PageClient() {
         currentLocation={location}
         radiusKm={filters.radiusKm}
         onLocateMe={locateMe}
-        onConfirm={(label, coordinates, radiusKm) => {
+        onConfirm={(label, coordinates) => {
           setCustomLocation(label, coordinates);
-          updateFilters({ radiusKm });
         }}
       />
     </div>

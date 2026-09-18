@@ -58,14 +58,14 @@ export function Header({
           <span className="hidden sm:inline">Tuning</span>
         </button>
 
-        {/* AgentMail Correspondence Button */}
+        {/* AgentMail Outbox Button */}
         <button
           type="button"
           onClick={onOpenDrawer}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--theme-bg-surface)]/80 hover:bg-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] transition border border-[var(--theme-border-subtle)] shadow-xs cursor-pointer"
         >
           <Mail className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
-          <span className="hidden sm:inline">Correspondence</span>
+          <span className="hidden sm:inline">Outbox</span>
           {unreadCount > 0 && (
             <span className="w-4 h-4 rounded-full bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] font-mono text-[var(--text-2xs)] flex items-center justify-center">
               {unreadCount}

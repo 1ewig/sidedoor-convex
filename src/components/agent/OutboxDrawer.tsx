@@ -6,19 +6,19 @@ import { X, Send } from 'lucide-react';
 import { EmailThread } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
 
-interface CorrespondenceDrawerProps {
+interface OutboxDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   threads: EmailThread[];
   onSendMessage: (threadId: string, text: string) => void;
 }
 
-export function CorrespondenceDrawer({
+export function OutboxDrawer({
   isOpen,
   onClose,
   threads,
   onSendMessage,
-}: CorrespondenceDrawerProps) {
+}: OutboxDrawerProps) {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
 
@@ -47,19 +47,19 @@ export function CorrespondenceDrawer({
         <>
           {/* Backdrop */}
           <motion.div
-            key="correspondence-backdrop"
+            key="outbox-backdrop"
             variants={drawerBackdropVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
             onClick={onClose}
-            aria-label="Close correspondence drawer backdrop"
+            aria-label="Close outbox drawer backdrop"
             className="fixed inset-0 bg-[var(--theme-bg-overlay)] backdrop-blur-xs z-40 cursor-default"
           />
 
           {/* Slide-out Panel (Right) */}
           <motion.aside
-            key="correspondence-panel"
+            key="outbox-panel"
             variants={drawerRightVariants}
             initial="hidden"
             animate="visible"
@@ -70,7 +70,7 @@ export function CorrespondenceDrawer({
             <div className="p-6 border-b border-[var(--theme-border-subtle)] flex items-center justify-between">
               <div>
                 <h3 className="font-serif text-[var(--text-xl)] text-[var(--theme-text-primary)]">
-                  Correspondence
+                  Outbox
                 </h3>
                 <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans">
                   Agent responses &amp; confirmations
@@ -90,7 +90,7 @@ export function CorrespondenceDrawer({
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {threads.length === 0 ? (
                 <div className="text-center py-12 text-[var(--text-xs)] text-[var(--theme-text-muted)]">
-                  No active correspondence. Request RSVP or details on any gathering to begin.
+                  No active outbox inquiries. Request RSVP or details on any gathering to begin.
                 </div>
               ) : (
                 threads.map((thread) => {
