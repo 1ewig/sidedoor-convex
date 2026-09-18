@@ -1,19 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Map as MapLibreMap,
-  Marker,
-  NavigationControl,
-  GeoJSONSource,
-  MapMouseEvent,
-} from 'maplibre-gl';
+import { X, MapPin, Loader2, Check, Search, Crosshair } from 'lucide-react';
 // CRITICAL: MapLibre requires its CSS for marker positioning & canvas rendering
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { X, MapPin, Loader2, Check, Search, Crosshair } from 'lucide-react';
 import { Coordinates } from '@/types';
+import { useLocationPinMap } from '@/hooks/useLocationPinMap';
 
-interface LocationPinModalProps {
+export interface LocationPinModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentLocation: {
@@ -25,36 +18,6 @@ interface LocationPinModalProps {
   onLocateMe: () => void;
 }
 
-// Generate a GeoJSON Polygon approximating a circle given center (lng, lat) and radius in km
-function createGeoJSONCircle(center: [number, number], radiusInKm: number, points = 64) {
-  const coords: [number, number][] = [];
-  const safeRadius = Math.max(0.1, radiusInKm);
-  const latRad = (center[1] * Math.PI) / 180;
-  const cosLat = Math.cos(latRad);
-  // Protect against division by zero near poles
-  const safeCosLat = Math.abs(cosLat) < 0.0001 ? 0.0001 : cosLat;
-
-  const distanceX = safeRadius / (111.32 * safeCosLat);
-  const distanceY = safeRadius / 110.574;
-
-  for (let i = 0; i < points; i++) {
-    const theta = (i / points) * (2 * Math.PI);
-    const x = distanceX * Math.cos(theta);
-    const y = distanceY * Math.sin(theta);
-    coords.push([center[0] + x, center[1] + y]);
-  }
-  coords.push(coords[0]); // Close polygon ring
-
-  return {
-    type: 'Feature' as const,
-    geometry: {
-      type: 'Polygon' as const,
-      coordinates: [coords],
-    },
-    properties: {},
-  };
-}
-
 export function LocationPinModal({
   isOpen,
   onClose,
@@ -63,349 +26,29 @@ export function LocationPinModal({
   onConfirm,
   onLocateMe,
 }: LocationPinModalProps) {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapLibreMap | null>(null);
-  const markerRef = useRef<Marker | null>(null);
-  const isMapLoadedRef = useRef<boolean>(false);
-
-  // Safe initial values
-  const defaultLng = Number.isFinite(currentLocation?.coordinates?.lng)
-    ? currentLocation.coordinates.lng
-    : 74.5313;
-  const defaultLat = Number.isFinite(currentLocation?.coordinates?.lat)
-    ? currentLocation.coordinates.lat
-    : 32.4927;
-
-  const [selectedCoords, setSelectedCoords] = useState<Coordinates>({
-    lat: defaultLat,
-    lng: defaultLng,
+  const {
+    mapContainerRef,
+    selectedCoords,
+    resolvedLabel,
+    currentRadius,
+    isResolvingAddress,
+    isLocating,
+    searchQuery,
+    searchResults,
+    isSearching,
+    handleRadiusChange,
+    handleFlyToGps,
+    handleSearchChange,
+    handleSelectSearchResult,
+    handleConfirm,
+  } = useLocationPinMap({
+    isOpen,
+    onClose,
+    currentLocation,
+    initialRadius,
+    onConfirm,
+    onLocateMe,
   });
-  const [resolvedLabel, setResolvedLabel] = useState<string>(
-    currentLocation?.label || 'Selected Location'
-  );
-  const [currentRadius, setCurrentRadius] = useState<number>(initialRadius || 20);
-  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
-
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<
-    Array<{ label: string; fullAddress: string; coordinates: Coordinates }>
-  >([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Synchronize mutable refs so asynchronous events always access fresh values
-  const coordsRef = useRef<Coordinates>(selectedCoords);
-  const radiusRef = useRef<number>(currentRadius);
-
-  useEffect(() => {
-    coordsRef.current = selectedCoords;
-  }, [selectedCoords]);
-
-  useEffect(() => {
-    radiusRef.current = currentRadius;
-  }, [currentRadius]);
-
-  // Update radius GeoJSON layer safely without crashing if map/style is not ready
-  const updateRadiusLayer = useCallback((center: Coordinates, radius: number) => {
-    const map = mapRef.current;
-    if (!map || !isMapLoadedRef.current) return;
-
-    try {
-      const source = map.getSource('scout-radius-source') as GeoJSONSource | undefined;
-      if (source) {
-        source.setData(createGeoJSONCircle([center.lng, center.lat], radius));
-      }
-    } catch (err) {
-      console.warn('Failed to update radius layer:', err);
-    }
-  }, []);
-
-  // Reverse geocode coordinates to friendly place label
-  const reverseGeocode = useCallback(async (coords: Coordinates) => {
-    setIsResolvingAddress(true);
-    try {
-      const res = await fetch(`/api/geocode?lat=${coords.lat}&lng=${coords.lng}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.label) {
-          setResolvedLabel(data.label);
-        } else if (data.address) {
-          setResolvedLabel(data.address);
-        }
-      }
-    } catch {
-      // Keep existing label if fetch fails
-    } finally {
-      setIsResolvingAddress(false);
-    }
-  }, []);
-
-  // Initialize MapLibre GL instance ONCE when the modal opens
-  useEffect(() => {
-    if (!isOpen || !mapContainerRef.current) return;
-
-    // Prevent duplicate map instances (e.g. React 18 Strict Mode)
-    if (mapRef.current) return;
-
-    const initialCenter: [number, number] = [coordsRef.current.lng, coordsRef.current.lat];
-
-    // OpenFreeMap provides a dark style with no API key requirement
-    const map = new MapLibreMap({
-      container: mapContainerRef.current,
-      style: 'https://tiles.openfreemap.org/styles/dark',
-      center: initialCenter,
-      zoom: 12,
-      attributionControl: false,
-    });
-
-    mapRef.current = map;
-
-    // Custom Marker Element with Tailwind styles
-    const el = document.createElement('div');
-    el.className = 'relative flex items-center justify-center cursor-grab active:cursor-grabbing';
-    el.style.width = '34px';
-    el.style.height = '34px';
-    el.innerHTML = `
-      <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
-        <div style="position: absolute; inset: 0; border-radius: 9999px; background-color: rgba(16, 185, 129, 0.3); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-        <div style="position: relative; width: 26px; height: 26px; border-radius: 9999px; background-color: #059669; border: 2.5px solid #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
-          <div style="width: 8px; height: 8px; border-radius: 9999px; background-color: #ffffff;"></div>
-        </div>
-      </div>
-    `;
-
-    const marker = new Marker({
-      element: el,
-      draggable: true,
-    })
-      .setLngLat(initialCenter)
-      .addTo(map);
-
-    markerRef.current = marker;
-
-    // Move radius preview live while dragging
-    marker.on('drag', () => {
-      const lngLat = marker.getLngLat();
-      const newCoords = { lat: lngLat.lat, lng: lngLat.lng };
-      coordsRef.current = newCoords;
-      updateRadiusLayer(newCoords, radiusRef.current);
-    });
-
-    // Handle marker drag completion
-    marker.on('dragend', () => {
-      const lngLat = marker.getLngLat();
-      const newCoords = { lat: lngLat.lat, lng: lngLat.lng };
-      setSelectedCoords(newCoords);
-      reverseGeocode(newCoords);
-      updateRadiusLayer(newCoords, radiusRef.current);
-    });
-
-    // Handle clicking anywhere on map canvas to reposition pin
-    map.on('click', (e: MapMouseEvent) => {
-      const newCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-      marker.setLngLat([newCoords.lng, newCoords.lat]);
-      setSelectedCoords(newCoords);
-      reverseGeocode(newCoords);
-      updateRadiusLayer(newCoords, radiusRef.current);
-    });
-
-    // Add navigation controls (zoom & compass)
-    map.addControl(new NavigationControl({ showCompass: true }), 'top-right');
-
-    // Register radius source and vector layers on style load
-    map.on('load', () => {
-      isMapLoadedRef.current = true;
-      map.resize();
-
-      if (!map.getSource('scout-radius-source')) {
-        map.addSource('scout-radius-source', {
-          type: 'geojson',
-          data: createGeoJSONCircle(
-            [coordsRef.current.lng, coordsRef.current.lat],
-            radiusRef.current
-          ),
-        });
-
-        // Fill layer
-        map.addLayer({
-          id: 'scout-radius-fill',
-          type: 'fill',
-          source: 'scout-radius-source',
-          paint: {
-            'fill-color': '#10b981',
-            'fill-opacity': 0.16,
-          },
-        });
-
-        // Border stroke line
-        map.addLayer({
-          id: 'scout-radius-line',
-          type: 'line',
-          source: 'scout-radius-source',
-          paint: {
-            'line-color': '#10b981',
-            'line-width': 1.8,
-            'line-dasharray': [2, 2],
-            'line-opacity': 0.85,
-          },
-        });
-      }
-    });
-
-    // ResizeObserver prevents gray/clipped tiles when container size settles
-    const resizeObserver = new ResizeObserver(() => {
-      if (mapRef.current) {
-        mapRef.current.resize();
-      }
-    });
-    resizeObserver.observe(mapContainerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-      isMapLoadedRef.current = false;
-      if (markerRef.current) {
-        markerRef.current.remove();
-        markerRef.current = null;
-      }
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [isOpen, reverseGeocode, updateRadiusLayer]);
-
-  // Handle radius change live
-  const handleRadiusChange = (newRadius: number) => {
-    setCurrentRadius(newRadius);
-    radiusRef.current = newRadius;
-    updateRadiusLayer(coordsRef.current, newRadius);
-  };
-
-  // Fly to user's real-time GPS location
-  const handleFlyToGps = () => {
-    setIsLocating(true);
-    onLocateMe();
-
-    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const coords: Coordinates = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          };
-          setSelectedCoords(coords);
-          coordsRef.current = coords;
-
-          if (mapRef.current) {
-            mapRef.current.flyTo({ center: [coords.lng, coords.lat], zoom: 13, speed: 1.4 });
-          }
-          if (markerRef.current) {
-            markerRef.current.setLngLat([coords.lng, coords.lat]);
-          }
-
-          updateRadiusLayer(coords, currentRadius);
-          reverseGeocode(coords);
-          setIsLocating(false);
-        },
-        (error) => {
-          console.warn('Geolocation failed, falling back to currentLocation prop:', error);
-          setIsLocating(false);
-          // Fallback to prop
-          if (mapRef.current && markerRef.current) {
-            const coords = currentLocation.coordinates;
-            setSelectedCoords(coords);
-            coordsRef.current = coords;
-            mapRef.current.flyTo({ center: [coords.lng, coords.lat], zoom: 13, speed: 1.4 });
-            markerRef.current.setLngLat([coords.lng, coords.lat]);
-            updateRadiusLayer(coords, currentRadius);
-            setResolvedLabel(currentLocation.label);
-          }
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    } else {
-      setIsLocating(false);
-    }
-  };
-
-  // Debounced search input handler
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchQuery(val);
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    if (val.trim().length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(val.trim())}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults(data.results || []);
-        }
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-  };
-
-  // Reposition pin to selected search suggestion
-  const handleSelectSearchResult = (item: {
-    label: string;
-    fullAddress: string;
-    coordinates: Coordinates;
-  }) => {
-    setResolvedLabel(item.label);
-    setSelectedCoords(item.coordinates);
-    coordsRef.current = item.coordinates;
-    setSearchQuery('');
-    setSearchResults([]);
-
-    if (mapRef.current && markerRef.current) {
-      const center: [number, number] = [item.coordinates.lng, item.coordinates.lat];
-      mapRef.current.flyTo({ center, zoom: 13, speed: 1.4 });
-      markerRef.current.setLngLat(center);
-      updateRadiusLayer(item.coordinates, currentRadius);
-    }
-  };
-
-  // Confirm and close modal
-  const handleConfirm = () => {
-    onConfirm(resolvedLabel, selectedCoords, currentRadius);
-    onClose();
-  };
-
-  // Escape key handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Clean up debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
 
   if (!isOpen) return null;
 
