@@ -33,6 +33,7 @@ export function LocationPinModal({
     currentRadius,
     isResolvingAddress,
     isLocating,
+    isMapReady,
     searchQuery,
     searchResults,
     isSearching,
@@ -53,7 +54,7 @@ export function LocationPinModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[var(--theme-bg-overlay)] backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-4xl h-[85vh] max-h-[750px] flex flex-col rounded-3xl bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] shadow-2xl overflow-hidden">
         {/* Header Bar */}
         <div className="px-5 py-4 flex items-center justify-between border-b border-[var(--theme-border-subtle)] bg-[var(--theme-bg-surface)] z-10 shrink-0">
@@ -85,9 +86,19 @@ export function LocationPinModal({
         </div>
 
         {/* Map Canvas with Search Bar Overlay */}
-        <div className="relative flex-1 w-full bg-[#121212] overflow-hidden min-h-[300px]">
+        <div className="relative flex-1 w-full bg-[var(--theme-text-primary)] overflow-hidden min-h-[300px]">
           {/* Map Container */}
           <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
+          {/* Loading Overlay */}
+          {!isMapReady && (
+            <div className="absolute inset-0 z-15 flex flex-col items-center justify-center bg-[var(--theme-bg-surface)]/80 backdrop-blur-xs transition-opacity duration-300">
+              <Loader2 className="w-7 h-7 text-[var(--theme-brand-accent)] animate-spin mb-2" />
+              <p className="text-[var(--text-xs)] text-[var(--theme-text-secondary)] font-sans">
+                Loading scout map...
+              </p>
+            </div>
+          )}
 
           {/* Search Flyout on Map */}
           <div className="absolute top-4 left-4 right-4 sm:right-auto sm:w-80 z-20">

@@ -7,9 +7,37 @@ import {
   NavigationControl,
   GeoJSONSource,
   MapMouseEvent,
+  StyleSpecification,
 } from 'maplibre-gl';
 import { Coordinates } from '@/types';
 import { createGeoJSONCircle } from '@/lib/geo';
+
+// Clean, reliable, unwatermarked OpenStreetMap tiles (100% open-source, no API key required)
+const OSM_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    'osm-tiles': {
+      type: 'raster',
+      tiles: [
+        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ],
+      tileSize: 256,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [
+    {
+      id: 'osm-tiles-layer',
+      type: 'raster',
+      source: 'osm-tiles',
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
 
 export interface LocationSearchResult {
   label: string;
@@ -60,6 +88,7 @@ export function useLocationPinMap({
   const [currentRadius, setCurrentRadius] = useState<number>(initialRadius || 20);
   const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   // Live address search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,11 +148,12 @@ export function useLocationPinMap({
     if (!isOpen || !mapContainerRef.current) return;
     if (mapRef.current) return;
 
+    setIsMapReady(false);
     const initialCenter: [number, number] = [coordsRef.current.lng, coordsRef.current.lat];
 
     const map = new MapLibreMap({
       container: mapContainerRef.current,
-      style: 'https://tiles.openfreemap.org/styles/dark',
+      style: OSM_STYLE,
       center: initialCenter,
       zoom: 12,
       attributionControl: false,
@@ -177,10 +207,15 @@ export function useLocationPinMap({
       updateRadiusLayer(newCoords, radiusRef.current);
     });
 
+    map.on('error', (e) => {
+      console.warn('MapLibre map error:', e);
+    });
+
     map.addControl(new NavigationControl({ showCompass: true }), 'top-right');
 
     map.on('load', () => {
       isMapLoadedRef.current = true;
+      setIsMapReady(true);
       map.resize();
 
       if (!map.getSource('scout-radius-source')) {
@@ -216,6 +251,10 @@ export function useLocationPinMap({
       }
     });
 
+    // Handle container animation settling
+    const timer1 = setTimeout(() => map.resize(), 150);
+    const timer2 = setTimeout(() => map.resize(), 350);
+
     const resizeObserver = new ResizeObserver(() => {
       if (mapRef.current) {
         mapRef.current.resize();
@@ -224,8 +263,11 @@ export function useLocationPinMap({
     resizeObserver.observe(mapContainerRef.current);
 
     return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
       resizeObserver.disconnect();
       isMapLoadedRef.current = false;
+      setIsMapReady(false);
       if (markerRef.current) {
         markerRef.current.remove();
         markerRef.current = null;
@@ -370,6 +412,7 @@ export function useLocationPinMap({
     currentRadius,
     isResolvingAddress,
     isLocating,
+    isMapReady,
     searchQuery,
     searchResults,
     isSearching,
