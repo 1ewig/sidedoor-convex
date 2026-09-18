@@ -7,6 +7,13 @@ export const DRAWER_SPRING_TRANSITION: Transition = {
   mass: 0.8,
 };
 
+export const POPOVER_SPRING_TRANSITION: Transition = {
+  type: 'spring',
+  damping: 24,
+  stiffness: 350,
+  mass: 0.6,
+};
+
 export const BACKDROP_TRANSITION: Transition = {
   duration: 0.22,
   ease: 'easeOut',
@@ -27,6 +34,27 @@ export const drawerRightVariants: Variants = {
   exit: {
     x: '100%',
     transition: DRAWER_SPRING_TRANSITION,
+  },
+};
+
+export const popoverVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.94,
+    y: -6,
+    transition: { duration: 0.12, ease: 'easeIn' },
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: POPOVER_SPRING_TRANSITION,
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.94,
+    y: -6,
+    transition: { duration: 0.12, ease: 'easeIn' },
   },
 };
 

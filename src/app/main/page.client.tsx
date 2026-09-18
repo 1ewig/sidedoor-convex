@@ -89,6 +89,7 @@ export function PageClient() {
         unreadCount={unreadCount}
         onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
         locationLabel={location.label}
+        coordinates={location.coordinates}
         isLocating={isLocating}
         onLocateMe={locateMe}
         onOpenMapModal={() => setIsMapModalOpen(true)}

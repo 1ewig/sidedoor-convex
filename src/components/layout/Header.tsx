@@ -1,11 +1,13 @@
 import { Mail, SlidersHorizontal } from 'lucide-react';
 import { LocationAnchor } from '@/components/location/LocationAnchor';
+import { Coordinates } from '@/types';
 
 interface HeaderProps {
   onOpenDrawer: () => void;
   unreadCount: number;
   onOpenFilterDrawer: () => void;
   locationLabel: string;
+  coordinates?: Coordinates;
   isLocating: boolean;
   onLocateMe: () => void;
   onOpenMapModal?: () => void;
@@ -17,6 +19,7 @@ export function Header({
   unreadCount,
   onOpenFilterDrawer,
   locationLabel,
+  coordinates,
   isLocating,
   onLocateMe,
   onOpenMapModal,
@@ -38,6 +41,7 @@ export function Header({
         {/* Location Anchor & Locate Me Control */}
         <LocationAnchor
           locationLabel={locationLabel}
+          coordinates={coordinates}
           isLocating={isLocating}
           onLocateMe={onLocateMe}
           onOpenMapModal={onOpenMapModal}
