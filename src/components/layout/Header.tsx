@@ -27,7 +27,7 @@ export function Header({ onOpenDrawer, unreadCount }: HeaderProps) {
         <Mail className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
         <span>Correspondence</span>
         {unreadCount > 0 && (
-          <span className="w-4 h-4 rounded-full bg-[var(--theme-text-primary)] text-white font-mono text-[10px] flex items-center justify-center">
+          <span className="w-4 h-4 rounded-full bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] font-mono text-[var(--text-2xs)] flex items-center justify-center">
             {unreadCount}
           </span>
         )}

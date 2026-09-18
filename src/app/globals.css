@@ -77,9 +77,34 @@
 
   --color-canvas: var(--theme-bg-base);
   --color-dock: var(--theme-bg-surface);
-  --color-ink: var(--theme-text-primary);
-  --color-muted: var(--theme-text-muted);
+  --color-elevated: var(--theme-bg-elevated);
+  --color-overlay: var(--theme-bg-overlay);
   --color-line: var(--theme-border-subtle);
+  --color-line-strong: var(--theme-border-strong);
+  --color-ink: var(--theme-text-primary);
+  --color-stone: var(--theme-text-secondary);
+  --color-muted: var(--theme-text-muted);
+  --color-brand: var(--theme-brand-primary);
+  --color-brand-accent: var(--theme-brand-accent);
+  --color-success: var(--theme-status-success);
+  --color-danger: var(--theme-status-danger);
+  --color-warning: var(--theme-status-warning);
+  --color-info: var(--theme-status-info);
+
+  --text-2xs: var(--text-2xs);
+  --text-xs: var(--text-xs);
+  --text-sm: var(--text-sm);
+  --text-base: var(--text-base);
+  --text-lg: var(--text-lg);
+  --text-xl: var(--text-xl);
+  --text-2xl: var(--text-2xl);
+  --text-3xl: var(--text-3xl);
+
+  --leading-tight: var(--leading-tight);
+  --leading-snug: var(--leading-snug);
+  --leading-normal: var(--leading-normal);
+  --leading-relaxed: var(--leading-relaxed);
+  --leading-loose: var(--leading-loose);
 
   --shadow-ambient: var(--shadow-ambient);
   --shadow-float: var(--shadow-float);

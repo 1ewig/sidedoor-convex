@@ -73,7 +73,32 @@ Every interactive page must follow the **Orchestrator Pattern**:
 
 ---
 
-## 5. Quality & Performance Verification
+## 5. Theme & Typography Guidelines (Strict Tokenization)
+- **No Hardcoded Theme & Typography Values**:
+  - Never use hardcoded hex colors (e.g., `#2D2721`), preset raw colors (e.g., `text-white`, `bg-black/20`), or arbitrary Tailwind color classes (e.g., `bg-emerald-50`).
+  - Never use arbitrary pixel typography sizes or line-heights (e.g., `text-[8px]`, `text-[10px]`, `text-[11px]`, `leading-[1.15]`).
+- **Use Defined Design System Variables**:
+  - **Colors**: Always reference CSS custom properties or mapped Tailwind utilities:
+    - Canvas & Surfaces: `--theme-bg-base`, `--theme-bg-surface`, `--theme-bg-elevated`, `--theme-bg-overlay`
+    - Borders: `--theme-border-subtle`, `--theme-border-strong`
+    - Text: `--theme-text-primary`, `--theme-text-secondary`, `--theme-text-muted`
+    - Brand & Accents: `--theme-brand-primary`, `--theme-brand-accent`
+    - Statuses: `--theme-status-success`, `--theme-status-danger`, `--theme-status-warning`, `--theme-status-info`
+  - **Typography Scale**: Use defined scale tokens:
+    - Text Sizes: `--text-2xs` (12px), `--text-xs` (14px), `--text-sm` (16px), `--text-base` (18px), `--text-lg` (22px), `--text-xl` (32px), `--text-2xl` (48px), `--text-3xl` (68px)
+    - Line Heights: `--leading-tight` (1.25), `--leading-snug` (1.375), `--leading-normal` (1.5), `--leading-relaxed` (1.625), `--leading-loose` (2.0)
+    - Font Families: `font-serif` (`--font-serif`), `font-sans` (`--font-sans`), `font-mono` (`--font-mono`)
+  - **Scope**: Other UI customizations (e.g. container dimensions, specific transforms) may adapt to component needs, but **theme colors and typography scales must strictly conform to existing theme variables**.
+
+---
+
+## 6. Agent Tool Efficiency & Execution Guidelines
+- **Batch Multiple Tool Calls**: Prioritize issuing multiple parallel or batch tool calls within a single API turn (e.g., reading multiple files simultaneously, applying independent file replacements) to minimize roundtrips and latency.
+- **Direct File Operations**: Prioritize reading (`view_file`) and writing (`replace_file_content`, `multi_replace_file_content`, `write_to_file`) directly against project sources rather than running shell commands for file manipulation.
+
+---
+
+## 7. Quality & Performance Verification
 - **Linting**: Always use `bun run lint` (Oxlint). Keep rules clean and zero-warning.
 - **Type Checking**: Run `bunx tsc --noEmit` (TypeScript 7). Ensure strict typing throughout.
 - **Builds**: Verify with `bun run build` (Turbopack).

@@ -69,7 +69,7 @@ export function PageClient() {
   };
 
   return (
-    <div className="bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] font-sans antialiased min-h-screen relative flex flex-col justify-between overflow-x-hidden selection:bg-[var(--theme-text-primary)] selection:text-white">
+    <div className="bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] font-sans antialiased min-h-screen relative flex flex-col justify-between overflow-x-hidden selection:bg-[var(--theme-text-primary)] selection:text-[var(--theme-bg-surface)]">
       {/* Ambient Leaf Shadow Overlay */}
       <ShadowOverlay />
 
@@ -83,7 +83,7 @@ export function PageClient() {
       <main className="relative z-10 w-full max-w-2xl mx-auto px-6 my-auto flex flex-col items-center text-center py-10">
         {/* Editorial Headline */}
         <div className="mb-12 select-none">
-          <h1 className="font-serif text-4xl sm:text-5xl text-[var(--theme-text-primary)] tracking-tight leading-[1.15]">
+          <h1 className="font-serif text-4xl sm:text-5xl text-[var(--theme-text-primary)] tracking-tight leading-[var(--leading-tight)]">
             Local gatherings <br />
             <span className="font-serif italic font-normal text-[var(--theme-text-secondary)]">
               curated in silence
@@ -105,7 +105,7 @@ export function PageClient() {
         />
 
         {/* Soft Descriptive Subtitle */}
-        <p className="text-xs text-[var(--theme-text-muted)] max-w-sm mt-6 leading-relaxed font-light">
+        <p className="text-[var(--text-xs)] text-[var(--theme-text-muted)] max-w-sm mt-6 leading-[var(--leading-relaxed)] font-light">
           Continuous local crawling via Firecrawl. Vibe-scored by AI. Organizers contacted autonomously via AgentMail.
         </p>
       </main>

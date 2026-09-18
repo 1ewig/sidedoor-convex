@@ -25,7 +25,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       lang="en"
       className={`${instrumentSerif.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] font-sans antialiased min-h-screen relative flex flex-col justify-between overflow-x-hidden selection:bg-[var(--theme-text-primary)] selection:text-white">
+      <body className="bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] font-sans antialiased min-h-screen relative flex flex-col justify-between overflow-x-hidden selection:bg-[var(--theme-text-primary)] selection:text-[var(--theme-bg-surface)]">
         {children}
       </body>
     </html>

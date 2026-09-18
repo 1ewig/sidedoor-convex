@@ -6,7 +6,7 @@ export function ShadowOverlay() {
         viewBox="0 0 600 600"
         fill="none"
       >
-        <g fill="#2D2721">
+        <g fill="var(--theme-text-primary)">
           <ellipse cx="420" cy="180" rx="280" ry="45" transform="rotate(-35 420 180)" />
           <ellipse cx="450" cy="240" rx="300" ry="38" transform="rotate(-25 450 240)" />
           <ellipse cx="460" cy="310" rx="320" ry="42" transform="rotate(-15 460 310)" />
