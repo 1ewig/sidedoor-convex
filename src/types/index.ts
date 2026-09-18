@@ -69,3 +69,8 @@ export interface SearchFilterState {
   onlyFree: boolean;
   minScore: number;
 }
+
+export interface UserLocation {
+  label: string;
+  coordinates: Coordinates;
+}

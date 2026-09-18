@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useEventDiscovery } from '@/hooks/useEventDiscovery';
 import { useAgentMail } from '@/hooks/useAgentMail';
+import { useUserLocation } from '@/hooks/useUserLocation';
 import { ShadowOverlay } from '@/components/layout/ShadowOverlay';
 import { Header } from '@/components/layout/Header';
 import { FloatingDock } from '@/components/discovery/FloatingDock';
@@ -29,6 +30,14 @@ export function PageClient() {
     unreadCount,
     sendEventInquiry,
   } = useAgentMail();
+
+  const {
+    location,
+    isLocating,
+    error: locationError,
+    locateMe,
+    setCustomLocation,
+  } = useUserLocation();
 
   const handleResetDefaults = () => {
     updateFilters({
@@ -79,6 +88,11 @@ export function PageClient() {
         onOpenDrawer={() => setIsDrawerOpen(true)}
         unreadCount={unreadCount}
         onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
+        locationLabel={location.label}
+        isLocating={isLocating}
+        onLocateMe={locateMe}
+        onSelectLocation={setCustomLocation}
+        locationError={locationError}
       />
 
       {/* Hero & Floating Dock */}
