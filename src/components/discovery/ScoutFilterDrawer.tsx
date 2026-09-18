@@ -49,8 +49,8 @@ export function ScoutFilterDrawer({
         className="fixed inset-0 bg-[var(--theme-bg-overlay)] backdrop-blur-xs z-40 cursor-default"
       />
 
-      {/* Slide-out Panel (Left) */}
-      <aside className="fixed inset-y-0 left-0 w-full max-w-sm bg-[var(--theme-bg-surface)] border-r border-[var(--theme-border-subtle)] shadow-2xl z-50 flex flex-col animate-in slide-in-from-left duration-300">
+      {/* Slide-out Panel (Right) */}
+      <aside className="fixed inset-y-0 right-0 w-full max-w-md sm:max-w-lg bg-[var(--theme-bg-surface)] border-l border-[var(--theme-border-subtle)] shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
         <div className="p-6 border-b border-[var(--theme-border-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-2.5">

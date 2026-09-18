@@ -115,7 +115,7 @@ export function PageClient() {
         />
       </div>
 
-      {/* Scout Tuning Filter Drawer (Left) */}
+      {/* Scout Tuning Filter Drawer */}
       <ScoutFilterDrawer
         isOpen={isFilterDrawerOpen}
         onClose={() => setIsFilterDrawerOpen(false)}
