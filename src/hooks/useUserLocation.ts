@@ -10,30 +10,13 @@ interface StoredLocation extends UserLocation {
   isUserExplicit?: boolean;
 }
 
+const DEFAULT_LOCATION: UserLocation = {
+  label: DEFAULT_FALLBACK_LABEL,
+  coordinates: { lat: 32.4927, lng: 74.5313 },
+};
+
 export function useUserLocation() {
-  const [location, setLocation] = useState<UserLocation>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed: StoredLocation = JSON.parse(saved);
-          // Only use saved if it was explicitly selected by the user or is a real detected location
-          if (
-            parsed?.label &&
-            parsed?.coordinates &&
-            parsed.label !== DEFAULT_FALLBACK_LABEL &&
-            parsed.label !== 'Lower East Side, NY'
-          ) {
-            return parsed;
-          }
-        }
-      } catch {}
-    }
-    return {
-      label: DEFAULT_FALLBACK_LABEL,
-      coordinates: { lat: 32.4927, lng: 74.5313 },
-    };
-  });
+  const [location, setLocation] = useState<UserLocation>(DEFAULT_LOCATION);
 
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,11 +146,17 @@ export function useUserLocation() {
       if (saved) {
         const parsed: StoredLocation = JSON.parse(saved);
         if (
-          parsed?.isUserExplicit &&
+          parsed?.label &&
+          parsed?.coordinates &&
           parsed.label !== DEFAULT_FALLBACK_LABEL &&
           parsed.label !== 'Lower East Side, NY'
         ) {
-          shouldAutoDetect = false;
+          queueMicrotask(() => {
+            setLocation(parsed);
+          });
+          if (parsed.isUserExplicit) {
+            shouldAutoDetect = false;
+          }
         }
       }
     } catch {}

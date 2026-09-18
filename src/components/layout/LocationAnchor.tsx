@@ -127,7 +127,7 @@ export function LocationAnchor({
           className="flex items-center gap-1.5 pl-3 pr-2 py-1.5 text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] hover:text-[var(--theme-brand-accent)] transition cursor-pointer"
         >
           <MapPin className="w-3.5 h-3.5 text-[var(--theme-brand-accent)] shrink-0" />
-          <span className="max-w-[140px] sm:max-w-[190px] truncate font-sans">
+          <span suppressHydrationWarning className="max-w-[140px] sm:max-w-[190px] truncate font-sans">
             {locationLabel}
           </span>
         </button>
