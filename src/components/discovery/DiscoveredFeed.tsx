@@ -4,13 +4,13 @@ import { EventCard } from './EventCard';
 interface DiscoveredFeedProps {
   events: LocalEvent[];
   isOpen: boolean;
-  onSendAgentMail: (event: LocalEvent) => void;
+  onSelectEvent: (event: LocalEvent) => void;
 }
 
 export function DiscoveredFeed({
   events,
   isOpen,
-  onSendAgentMail,
+  onSelectEvent,
 }: DiscoveredFeedProps) {
   if (!isOpen) return null;
 
@@ -32,7 +32,7 @@ export function DiscoveredFeed({
       </div>
 
       {/* Events List */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {events.length === 0 ? (
           <div className="p-8 text-center bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] rounded-2xl shadow-xs">
             <p className="text-[var(--text-xs)] text-[var(--theme-text-muted)] font-sans">
@@ -44,7 +44,7 @@ export function DiscoveredFeed({
             <EventCard
               key={event.id}
               event={event}
-              onSendAgentMail={onSendAgentMail}
+              onSelect={onSelectEvent}
             />
           ))
         )}

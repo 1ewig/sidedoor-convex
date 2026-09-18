@@ -11,6 +11,7 @@ import { DiscoveredFeed } from '@/components/discovery/DiscoveredFeed';
 import { OutboxDrawer } from '@/components/agent/OutboxDrawer';
 import { ScoutFilterDrawer } from '@/components/discovery/ScoutFilterDrawer';
 import { LocationPinModal } from '@/components/location/LocationPinModal';
+import { EventDetailModal } from '@/components/discovery/EventDetailModal';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { LocalEvent } from '@/types';
 
@@ -19,6 +20,7 @@ export function PageClient() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<LocalEvent | null>(null);
 
   const resetFilters = useScoutFilterStore((state) => state.resetFilters);
 
@@ -60,6 +62,7 @@ export function PageClient() {
   const handleSendAgentMail = (event: LocalEvent) => {
     sendEventInquiry(event);
     markEventOutreach(event.id);
+    setSelectedEvent((prev) => (prev && prev.id === event.id ? { ...prev, outreachStatus: 'sent' } : prev));
     setIsDrawerOpen(true);
   };
 
@@ -126,7 +129,7 @@ export function PageClient() {
         <DiscoveredFeed
           events={events}
           isOpen={isFeedOpen}
-          onSendAgentMail={handleSendAgentMail}
+          onSelectEvent={(event) => setSelectedEvent(event)}
         />
       </div>
 
@@ -157,6 +160,14 @@ export function PageClient() {
         onConfirm={(label, coordinates) => {
           setCustomLocation(label, coordinates);
         }}
+      />
+
+      {/* Focused Event Dossier Modal */}
+      <EventDetailModal
+        isOpen={Boolean(selectedEvent)}
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        onSendAgentMail={handleSendAgentMail}
       />
     </div>
   );
