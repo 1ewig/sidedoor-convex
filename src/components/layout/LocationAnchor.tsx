@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MapPin, Navigation, Loader2, Search, Check } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Search, Check, Map as MapIcon } from 'lucide-react';
 import { Coordinates } from '@/types';
 
 interface LocationSearchResult {
@@ -16,6 +16,7 @@ interface LocationAnchorProps {
   onLocateMe: () => void;
   onSelectLocation: (label: string, coords?: Coordinates) => void;
   onSearchLocations?: (query: string) => Promise<LocationSearchResult[]>;
+  onOpenMapModal?: () => void;
   error?: string | null;
 }
 
@@ -34,6 +35,7 @@ export function LocationAnchor({
   onLocateMe,
   onSelectLocation,
   onSearchLocations,
+  onOpenMapModal,
   error,
 }: LocationAnchorProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -161,26 +163,46 @@ export function LocationAnchor({
             </span>
           </div>
 
-          {/* Quick "Use Current Location" Option */}
-          <button
-            type="button"
-            onClick={() => {
-              onLocateMe();
-              setIsOpen(false);
-            }}
-            disabled={isLocating}
-            className="w-full mt-3 px-3 py-2 rounded-xl bg-[var(--theme-bg-base)] hover:bg-[var(--theme-border-subtle)] text-[var(--text-xs)] text-[var(--theme-text-primary)] font-medium flex items-center justify-between transition cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <Navigation className="w-3.5 h-3.5 text-[var(--theme-brand-accent)]" />
-              Use Current Location
-            </span>
-            {isLocating ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--theme-brand-accent)]" />
-            ) : (
-              <span className="text-[10px] font-mono text-[var(--theme-text-muted)]">GPS / IP</span>
+          <div className="mt-3 space-y-1.5">
+            {/* Quick "Use Current Location" Option */}
+            <button
+              type="button"
+              onClick={() => {
+                onLocateMe();
+                setIsOpen(false);
+              }}
+              disabled={isLocating}
+              className="w-full px-3 py-2 rounded-xl bg-[var(--theme-bg-base)] hover:bg-[var(--theme-border-subtle)] text-[var(--text-xs)] text-[var(--theme-text-primary)] font-medium flex items-center justify-between transition cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Navigation className="w-3.5 h-3.5 text-[var(--theme-brand-accent)]" />
+                Use Current Location
+              </span>
+              {isLocating ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--theme-brand-accent)]" />
+              ) : (
+                <span className="text-[10px] font-mono text-[var(--theme-text-muted)]">GPS / IP</span>
+              )}
+            </button>
+
+            {/* "Pin on Interactive Map" Option */}
+            {onOpenMapModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenMapModal();
+                  setIsOpen(false);
+                }}
+                className="w-full px-3 py-2 rounded-xl bg-[var(--theme-bg-base)] hover:bg-[var(--theme-border-subtle)] text-[var(--text-xs)] text-[var(--theme-text-primary)] font-medium flex items-center justify-between transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <MapIcon className="w-3.5 h-3.5 text-[var(--theme-brand-accent)]" />
+                  Pin on Interactive Map
+                </span>
+                <span className="text-[10px] font-mono text-[var(--theme-text-muted)]">MapLibre</span>
+              </button>
             )}
-          </button>
+          </div>
 
           {error && (
             <p className="text-[11px] text-[var(--theme-status-danger)] mt-1.5 px-1 font-sans">

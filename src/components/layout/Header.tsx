@@ -11,6 +11,7 @@ interface HeaderProps {
   onLocateMe: () => void;
   onSelectLocation: (label: string, coords?: Coordinates) => void;
   onSearchLocations?: (query: string) => Promise<any>;
+  onOpenMapModal?: () => void;
   locationError?: string | null;
 }
 
@@ -23,6 +24,7 @@ export function Header({
   onLocateMe,
   onSelectLocation,
   onSearchLocations,
+  onOpenMapModal,
   locationError,
 }: HeaderProps) {
   return (
@@ -45,6 +47,7 @@ export function Header({
           onLocateMe={onLocateMe}
           onSelectLocation={onSelectLocation}
           onSearchLocations={onSearchLocations}
+          onOpenMapModal={onOpenMapModal}
           error={locationError}
         />
 

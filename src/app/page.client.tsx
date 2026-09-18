@@ -10,12 +10,14 @@ import { FloatingDock } from '@/components/discovery/FloatingDock';
 import { DiscoveredFeed } from '@/components/discovery/DiscoveredFeed';
 import { CorrespondenceDrawer } from '@/components/agent/CorrespondenceDrawer';
 import { ScoutFilterDrawer } from '@/components/discovery/ScoutFilterDrawer';
+import { LocationPinModal } from '@/components/map/LocationPinModal';
 import { LocalEvent } from '@/types';
 
 export function PageClient() {
   const [isFeedOpen, setIsFeedOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [autoInquire, setAutoInquire] = useState(true);
 
   const {
@@ -94,6 +96,7 @@ export function PageClient() {
         onLocateMe={locateMe}
         onSelectLocation={setCustomLocation}
         onSearchLocations={searchLocations}
+        onOpenMapModal={() => setIsMapModalOpen(true)}
         locationError={locationError}
       />
 
@@ -148,6 +151,19 @@ export function PageClient() {
         onClose={() => setIsDrawerOpen(false)}
         threads={threads}
         onSendMessage={handleSendMessage}
+      />
+
+      {/* Interactive MapLibre GL Location Pinning Modal */}
+      <LocationPinModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        currentLocation={location}
+        radiusKm={filters.radiusKm}
+        onLocateMe={locateMe}
+        onConfirm={(label, coordinates, radiusKm) => {
+          setCustomLocation(label, coordinates);
+          updateFilters({ radiusKm });
+        }}
       />
     </div>
   );
