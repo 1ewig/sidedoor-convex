@@ -11,11 +11,7 @@ import { CorrespondenceDrawer } from '@/components/agent/CorrespondenceDrawer';
 import { Footer } from '@/components/layout/Footer';
 import { LocalEvent } from '@/types';
 
-const RADIUS_OPTIONS = ['10 km', '20 km', '35 km', '50 km'];
-
 export function PageClient() {
-  const [radiusIndex, setRadiusIndex] = useState(1); // default '20 km'
-  const [autoInquire, setAutoInquire] = useState(true);
   const [isFeedOpen, setIsFeedOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -31,13 +27,6 @@ export function PageClient() {
     unreadCount,
     sendEventInquiry,
   } = useAgentMail();
-
-  const handleCycleRadius = () => {
-    const nextIndex = (radiusIndex + 1) % RADIUS_OPTIONS.length;
-    setRadiusIndex(nextIndex);
-    const km = parseInt(RADIUS_OPTIONS[nextIndex] || '20', 10);
-    updateFilters({ radiusKm: km });
-  };
 
   const handleTriggerDiscovery = () => {
     setIsFeedOpen(true);
@@ -95,12 +84,6 @@ export function PageClient() {
         <FloatingDock
           prompt={filters.query}
           onPromptChange={(val) => updateFilters({ query: val })}
-          radiusLabel={RADIUS_OPTIONS[radiusIndex] || '20 km'}
-          onCycleRadius={handleCycleRadius}
-          autoInquire={autoInquire}
-          onToggleAutoInquire={() => setAutoInquire(!autoInquire)}
-          totalScouts={events.length}
-          onToggleResults={() => setIsFeedOpen(!isFeedOpen)}
           onTriggerDiscovery={handleTriggerDiscovery}
         />
 
