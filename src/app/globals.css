@@ -175,18 +175,22 @@ body {
 
 .animate-shadow-breeze {
   animation: shadow-breeze 22s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
 .animate-ambient-breathe {
   animation: ambient-breathe 16s ease-in-out infinite alternate;
+  will-change: opacity;
 }
 
 .animate-orb-1 {
   animation: orb-wander-1 28s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
 .animate-orb-2 {
   animation: orb-wander-2 34s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {

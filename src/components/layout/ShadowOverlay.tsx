@@ -1,18 +1,33 @@
 export function ShadowOverlay() {
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none">
-      {/* Subtle Warm Ambient Light Orbs */}
-      <div className="absolute -top-32 -left-32 w-96 sm:w-[500px] h-96 sm:h-[500px] rounded-full bg-[var(--theme-bg-surface)] opacity-40 blur-3xl animate-orb-1 transform-gpu" />
-      <div className="absolute top-1/2 -right-40 w-80 sm:w-[450px] h-80 sm:h-[450px] rounded-full bg-[var(--theme-brand-accent)] opacity-[0.04] blur-3xl animate-orb-2 transform-gpu" />
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none [contain:strict]">
+      {/* Subtle Warm Ambient Light Orbs via pure radial-gradients (Zero GPU blur shader cost) */}
+      <div
+        className="absolute -top-32 -left-32 w-96 sm:w-[500px] h-96 sm:h-[500px] rounded-full animate-orb-1 transform-gpu pointer-events-none opacity-40"
+        style={{
+          background: 'radial-gradient(circle at center, var(--theme-bg-surface) 0%, transparent 70%)',
+        }}
+      />
+      <div
+        className="absolute top-1/2 -right-40 w-80 sm:w-[450px] h-80 sm:h-[450px] rounded-full animate-orb-2 transform-gpu pointer-events-none opacity-[0.05]"
+        style={{
+          background: 'radial-gradient(circle at center, var(--theme-brand-accent) 0%, transparent 70%)',
+        }}
+      />
 
-      {/* Gentle Floating Foliage Shadow */}
-      <div className="absolute inset-0 animate-ambient-breathe">
+      {/* Gentle Floating Foliage Shadow: Pre-cached SVG filter prevents per-frame CSS convolution recalculation */}
+      <div className="absolute inset-0 animate-ambient-breathe transform-gpu">
         <svg
-          className="absolute -top-24 -right-20 w-[650px] sm:w-[900px] h-auto blur-2xl animate-shadow-breeze transform-gpu"
+          className="absolute -top-24 -right-20 w-[650px] sm:w-[900px] h-auto animate-shadow-breeze transform-gpu"
           viewBox="0 0 600 600"
           fill="none"
         >
-          <g fill="var(--theme-text-primary)" opacity="0.85">
+          <defs>
+            <filter id="foliage-soft-blur" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="10" />
+            </filter>
+          </defs>
+          <g filter="url(#foliage-soft-blur)" fill="var(--theme-text-primary)" opacity="0.30">
             <ellipse cx="420" cy="180" rx="280" ry="45" transform="rotate(-35 420 180)" />
             <ellipse cx="450" cy="240" rx="300" ry="38" transform="rotate(-25 450 240)" />
             <ellipse cx="460" cy="310" rx="320" ry="42" transform="rotate(-15 460 310)" />
