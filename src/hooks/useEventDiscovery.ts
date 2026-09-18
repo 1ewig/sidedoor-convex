@@ -4,11 +4,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { LocalEvent, ScoutLog } from '@/types';
 import { INITIAL_EVENTS, MOCK_CRAWLER_SCRIPTS } from '@/lib/mockData';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
+import { useLocationStore } from '@/state/useLocationStore';
 
 export function useEventDiscovery() {
   const [events, setEvents] = useState<LocalEvent[]>(INITIAL_EVENTS);
   const filters = useScoutFilterStore((state) => state.filters);
   const updateFilters = useScoutFilterStore((state) => state.updateFilters);
+  const locationLabel = useLocationStore((state) => state.location.label);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isScouting, setIsScouting] = useState<boolean>(false);
@@ -98,10 +100,18 @@ export function useEventDiscovery() {
         };
         setLogs((prev) => [crawlLog, ...prev]);
 
+        const effectiveLocation =
+          locationLabel && locationLabel !== 'Detecting location...'
+            ? locationLabel
+            : undefined;
+
         const res = await fetch('/api/scout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: promptText }),
+          body: JSON.stringify({
+            prompt: promptText,
+            location: effectiveLocation,
+          }),
         });
 
         const data = await res.json();
@@ -178,7 +188,7 @@ export function useEventDiscovery() {
       setEvents((prev) => [newlyDiscovered, ...prev]);
       setSelectedEventId(newlyDiscovered.id);
     },
-    [filters.query, isScouting]
+    [filters.query, isScouting, locationLabel]
   );
 
   const markEventOutreach = useCallback((eventId: string) => {
