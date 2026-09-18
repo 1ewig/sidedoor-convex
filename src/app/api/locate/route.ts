@@ -21,13 +21,14 @@ export async function GET(req: NextRequest) {
     
     let clientIp = cfIp || (forwarded ? forwarded.split(',')[0].trim() : realIp) || '';
 
-    // Check if IP is localhost or private
+    // Check if IP is localhost or private (RFC 1918: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+    const isPrivate172 = /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(clientIp);
     const isLocal = !clientIp || 
       clientIp === '::1' || 
-      clientIp === '127.0.0.1' || 
+      clientIp.startsWith('127.') || 
       clientIp.startsWith('192.168.') || 
       clientIp.startsWith('10.') || 
-      clientIp.startsWith('172.');
+      isPrivate172;
 
     // If local, query without IP to let ipwho.is detect the public egress IP
     const url = isLocal ? 'https://ipwho.is/' : `https://ipwho.is/${clientIp}`;

@@ -27,6 +27,7 @@ export function LocationAnchor({
 }: LocationAnchorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
 
   // Close popover on click outside
   useEffect(() => {
@@ -41,11 +42,13 @@ export function LocationAnchor({
     }
   }, [isOpen]);
 
-  // Close popover on Escape key
+  // Close popover on Escape key and return focus to trigger button
   useEffect(() => {
+    if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         setIsOpen(false);
+        triggerButtonRef.current?.focus();
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -58,18 +61,21 @@ export function LocationAnchor({
     <div ref={containerRef} className="relative inline-block shrink-0">
       {/* Trigger Split-Pill */}
       <div
-        className={`inline-flex items-center h-8 sm:h-8.5 rounded-full bg-[var(--theme-bg-surface)]/95 hover:bg-[var(--theme-bg-surface)] border shadow-xs transition-all duration-150 ${isOpen
-            ? 'border-[var(--theme-brand-accent)] ring-2 ring-[var(--theme-brand-accent)]/20'
-            : 'border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)]'
+        className={`inline-flex items-center h-8 sm:h-8.5 rounded-full bg-[var(--theme-bg-surface)]/95 hover:bg-[var(--theme-bg-surface)] border shadow-xs transition-all duration-150 ${error
+            ? 'border-[var(--theme-status-danger)]/60 ring-2 ring-[var(--theme-status-danger)]/15'
+            : isOpen
+              ? 'border-[var(--theme-brand-accent)] ring-2 ring-[var(--theme-brand-accent)]/20'
+              : 'border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)]'
           }`}
       >
         {/* Main Location Dropdown Toggle */}
         <button
+          ref={triggerButtonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-haspopup="dialog"
-          title={`Current anchor: ${locationLabel}. Click to change.`}
+          title={`Current anchor: ${locationLabel}.${error ? ` Note: ${error}.` : ''} Click to change.`}
           className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] hover:text-[var(--theme-brand-accent)] transition-colors cursor-pointer rounded-l-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] select-none"
         >
           <MapPin className="w-3.5 h-3.5 text-[var(--theme-brand-accent)] shrink-0" />
@@ -93,12 +99,14 @@ export function LocationAnchor({
           type="button"
           onClick={onLocateMe}
           disabled={isLoading}
-          title="Detect my current location (GPS / IP)"
-          aria-label="Detect my current location via GPS or IP"
+          title={error ? `Location detection error: ${error}. Click to retry.` : "Detect my current location (GPS / IP)"}
+          aria-label={error ? `Location error: ${error}. Click to retry.` : "Detect my current location via GPS or IP"}
           className="flex items-center justify-center w-8 h-full px-2 text-[var(--theme-text-muted)] hover:text-[var(--theme-brand-accent)] disabled:opacity-40 transition-colors cursor-pointer rounded-r-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] shrink-0"
         >
           {isLoading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--theme-brand-accent)]" />
+          ) : error ? (
+            <AlertCircle className="w-3.5 h-3.5 text-[var(--theme-status-danger)]" />
           ) : (
             <Navigation className="w-3.5 h-3.5" />
           )}
@@ -149,7 +157,7 @@ export function LocationAnchor({
                 onLocateMe();
                 setIsOpen(false);
               }}
-              disabled={isLocating}
+              disabled={isLoading}
               className="w-full p-2 rounded-xl bg-[var(--theme-bg-base)] hover:bg-[var(--theme-border-subtle)] text-left flex items-center justify-between gap-2.5 transition duration-150 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
             >
               <div className="flex items-center gap-2.5 min-w-0">

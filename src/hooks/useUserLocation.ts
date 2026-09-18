@@ -82,7 +82,18 @@ export function useUserLocation() {
             }
           }
         } catch {
-          // Geocode failed, fall through
+          // Geocode fetch failed, but keep high-precision GPS coordinates with coordinate label
+          const fallbackLoc: UserLocation = {
+            label: `${coords.lat.toFixed(3)}°N, ${coords.lng.toFixed(3)}°E`,
+            coordinates: coords,
+          };
+          setLocation(fallbackLoc);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...fallbackLoc, isUserExplicit: true }));
+          } catch {}
+          gpsSucceeded = true;
+          setIsLocating(false);
+          return;
         }
       } catch {
         // Browser GPS denied or unavailable
@@ -140,6 +151,7 @@ export function useUserLocation() {
 
   // Auto-detect on initial load if no explicit user location was previously saved
   useEffect(() => {
+    let isCancelled = false;
     let shouldAutoDetect = true;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -148,11 +160,12 @@ export function useUserLocation() {
         if (
           parsed?.label &&
           parsed?.coordinates &&
-          parsed.label !== DEFAULT_FALLBACK_LABEL &&
-          parsed.label !== 'Lower East Side, NY'
+          parsed.label !== DEFAULT_FALLBACK_LABEL
         ) {
           queueMicrotask(() => {
-            setLocation(parsed);
+            if (!isCancelled) {
+              setLocation(parsed);
+            }
           });
           if (parsed.isUserExplicit) {
             shouldAutoDetect = false;
@@ -163,14 +176,32 @@ export function useUserLocation() {
 
     if (shouldAutoDetect) {
       fetchFromApiLocate().then((detected) => {
-        if (detected) {
-          setLocation(detected);
+        if (!isCancelled && detected) {
+          setLocation((prev) => {
+            // Guard against overwriting an explicit user choice made while request was in-flight
+            const currentSaved = localStorage.getItem(STORAGE_KEY);
+            if (currentSaved) {
+              try {
+                const currentParsed: StoredLocation = JSON.parse(currentSaved);
+                if (currentParsed?.isUserExplicit) return prev;
+              } catch {}
+            }
+            return detected;
+          });
           try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(detected));
+            const currentSaved = localStorage.getItem(STORAGE_KEY);
+            const isExplicit = currentSaved ? JSON.parse(currentSaved)?.isUserExplicit : false;
+            if (!isExplicit) {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(detected));
+            }
           } catch {}
         }
       });
     }
+
+    return () => {
+      isCancelled = true;
+    };
   }, [fetchFromApiLocate]);
 
   return {

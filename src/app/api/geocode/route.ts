@@ -8,8 +8,20 @@ export async function GET(req: NextRequest) {
 
   // Case 1: Reverse geocoding (lat + lng -> address label)
   if (lat && lng) {
+    const numLat = Number(lat);
+    const numLng = Number(lng);
+
+    if (isNaN(numLat) || isNaN(numLng)) {
+      return NextResponse.json({ error: 'Invalid coordinates' }, { status: 400 });
+    }
+
+    // Normalize coordinates to 4 decimal places (~11 meters precision)
+    // This dramatically improves Next.js fetch cache hits and prevents duplicate Nominatim requests
+    const normLat = numLat.toFixed(4);
+    const normLng = numLng.toFixed(4);
+
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&format=json&accept-language=en`;
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(normLat)}&lon=${encodeURIComponent(normLng)}&format=json&accept-language=en`;
       const res = await fetch(url, {
         headers: {
           'User-Agent': 'SideDoor-Scout/1.0 (contact@sidedoor.app)',
@@ -34,13 +46,13 @@ export async function GET(req: NextRequest) {
         } else if (data.name) {
           label = data.name;
         } else {
-          label = `${Number(lat).toFixed(3)}°N, ${Number(lng).toFixed(3)}°E`;
+          label = `${numLat.toFixed(3)}°N, ${numLng.toFixed(3)}°E`;
         }
 
         return NextResponse.json({
           label,
           fullAddress: data.display_name,
-          coordinates: { lat: Number(lat), lng: Number(lng) },
+          coordinates: { lat: numLat, lng: numLng },
         });
       }
     } catch (err) {
@@ -48,8 +60,8 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      label: `${Number(lat).toFixed(3)}°N, ${Number(lng).toFixed(3)}°E`,
-      coordinates: { lat: Number(lat), lng: Number(lng) },
+      label: `${numLat.toFixed(3)}°N, ${numLng.toFixed(3)}°E`,
+      coordinates: { lat: numLat, lng: numLng },
     });
   }
 
