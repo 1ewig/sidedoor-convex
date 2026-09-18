@@ -4,8 +4,10 @@ import FirecrawlApp from '@mendable/firecrawl-js';
 import {
   generateDiscoveryQueries,
   extractEventsFromMarkdown,
+  getTemporalContext,
   ScrapedPageInput,
 } from '../src/lib/ai';
+import { calculateHaversineDistanceKm } from '../src/lib/geo';
 
 // Load environment
 dotenv.config({ path: resolve(process.cwd(), '.env.local') });
@@ -41,8 +43,12 @@ async function main() {
     'indie rock shows, outdoor night fleas, or art vernissages within 20 km of me this weekend';
   const location = process.argv[3] || 'Brooklyn / New York City';
 
-  console.log(`💬 User Request: "${userPrompt}"`);
-  console.log(`📍 Location:     "${location}"\n`);
+  const { currentDateStr, weekendStr, monthYearStr } = getTemporalContext();
+
+  console.log(`💬 User Request:     "${userPrompt}"`);
+  console.log(`📍 Location Context: "${location}"`);
+  console.log(`📅 Reference Date:   ${currentDateStr}`);
+  console.log(`⏳ Target Weekend:   ${weekendStr} (${monthYearStr})\n`);
 
   const pipelineStart = Date.now();
 
@@ -151,9 +157,13 @@ async function main() {
     console.log(`🎪 [UI Event #${i + 1}] ${evt.title}`);
     console.log(`======================================================`);
     console.log(`🆔 ID:         ${evt.id}`);
+    const refLat = 40.7128;
+    const refLng = -73.9500;
+    const exactDist = calculateHaversineDistanceKm(refLat, refLng, evt.coordinates.lat, evt.coordinates.lng);
+
     console.log(`🏷️ Category:   ${evt.category.toUpperCase()}`);
     console.log(`📍 Venue:      ${evt.venueName}`);
-    console.log(`🏠 Address:    ${evt.address} (${evt.distanceKm} km away)`);
+    console.log(`🏠 Address:    ${evt.address} (${exactDist} km away [Haversine])`);
     console.log(`🌐 Coords:     ${evt.coordinates.lat}, ${evt.coordinates.lng}`);
     console.log(`🕒 Time:       ${evt.formattedDate} • ${evt.formattedTime}`);
     console.log(`📅 ISO Stamp:  ${evt.dateTime}`);

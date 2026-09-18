@@ -78,6 +78,46 @@ export interface ScrapedPageInput {
 }
 
 /**
+ * Calculates current date and upcoming weekend strings for accurate temporal query anchoring
+ */
+export function getTemporalContext(): {
+  currentDateStr: string;
+  weekendStr: string;
+  monthYearStr: string;
+} {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  };
+  const currentDateStr = now.toLocaleDateString('en-US', options);
+
+  // Determine upcoming weekend or current weekend dates
+  // 0: Sun, 1: Mon, ..., 5: Fri, 6: Sat
+  const day = now.getDay();
+  const daysUntilFriday = (5 - day + 7) % 7;
+  const friday = new Date(now);
+  friday.setDate(now.getDate() + (day === 0 || day === 6 ? 0 : daysUntilFriday));
+
+  const saturday = new Date(friday);
+  saturday.setDate(friday.getDate() + 1);
+
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+
+  const mF = friday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const mS = saturday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const mSu = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const weekendStr = `${mF}, ${mS}, and ${mSu}`;
+  const monthYearStr = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  return { currentDateStr, weekendStr, monthYearStr };
+}
+
+/**
  * Step 1: Transforms a natural language prompt into 3 targeted Firecrawl search queries.
  */
 export async function generateDiscoveryQueries(
@@ -98,16 +138,30 @@ export async function generateDiscoveryQueries(
     );
   }
 
+  const { currentDateStr, weekendStr, monthYearStr } = getTemporalContext();
+
   const systemPrompt = `You are SideDoor's autonomous scout planner.
-Your mission is to take a user's natural language weekend request and generate exactly 3 distinct, high-precision web search queries for Firecrawl to discover real local events, indie venues, popups, and small-door gatherings.
+Your mission is to take a user's natural language request and generate exactly 3 distinct, high-precision web search queries for Firecrawl to discover real, upcoming local events, indie venues, popups, and small-door gatherings.
 
-Search Query Strategy:
-1. Query 1 (Specific Vibe & Genre): Target specific underground/DIY calendars, venues, and genre listings for the user's primary taste.
-2. Query 2 (Neighborhood & Gathering Format): Target local community boards, flea markets, galleries, or taproom popups in the specified area.
-3. Query 3 (Alternative / Secret / Discovery Angle): Target secret show listings, ticket links, Instagram/Luma/Dice linktrees, or weekly arts dispatches.
+Temporal Anchor:
+- Reference Date: ${currentDateStr}
+- Upcoming Weekend: ${weekendStr} (${monthYearStr})
 
-Rules:
-- Include location context ("${locationHint}") and timeframe ("this weekend").
+Search Query Strategy & Domain Targeting:
+1. Query 1 (Underground/DIY & Live Music):
+   - Target genuine indie venue calendars, underground show boards, and DIY platforms in the specified location.
+   - When appropriate, prioritize high-signal music portals: site:ohmyrockness.com, site:ra.co, site:dice.fm, site:bowerypresents.com.
+   - Anchor to current timeframe: "${monthYearStr}" or "${weekendStr}".
+2. Query 2 (Neighborhood Markets, Vernissages, & Gallery Openings):
+   - Target local artisan night fleas, maker popups, and independent art gallery openings.
+   - When appropriate, prioritize arts/market portals: site:artrabbit.com, site:e-flux.com, site:nyartbeat.com, site:brooklynflea.com.
+3. Query 3 (Secret Shows, Indie RSVPs & Community Dispatches):
+   - Target secret gatherings, DIY linktrees, or platform RSVPs (e.g. site:lu.ma, site:partiful.com, "secret show", "loft party").
+
+Anti-Commercial Guardrails:
+- Append negative filters where appropriate to exclude stadium tours and ticket scalpers: -site:ticketmaster.com -site:stubhub.com -site:seatgeek.com.
+- Never search for generic "Top 10 tourist attractions". Search for specific calendars, flyers, and lineups.
+- Include location context ("${locationHint}").
 - Output exactly 3 queries.`;
 
   const thinkingLevel = options?.thinkingLevel ?? 'high';
@@ -116,7 +170,7 @@ Rules:
     model: google('gemini-3.5-flash-lite'),
     schema: DiscoveryQueriesSchema,
     system: systemPrompt,
-    prompt: `User Request: "${userPrompt}"\nLocation Context: "${locationHint}"`,
+    prompt: `User Request: "${userPrompt}"\nLocation Context: "${locationHint}"\nTimeframe: "${weekendStr} (${monthYearStr})"`,
     providerOptions: {
       google: {
         thinkingConfig: {
@@ -155,6 +209,8 @@ export async function extractEventsFromMarkdown(
     );
   }
 
+  const { currentDateStr, weekendStr, monthYearStr } = getTemporalContext();
+
   // Combine scraped markdown with OpenGraph images and up to 35k chars per source
   const combinedMarkdown = scrapedPages
     .map((p, i) => {
@@ -168,15 +224,20 @@ export async function extractEventsFromMarkdown(
   const systemPrompt = `You are SideDoor's chief event curator.
 Your task is to parse raw markdown scraped from local venue calendars, DIY concert listings, night flea announcements, and art gallery websites.
 
-Extract authentic, distinct events that fit the user's prompt: "${userPrompt}" in "${locationHint}".
+Temporal Anchor:
+- Reference Date: ${currentDateStr}
+- Target Active Window: ${weekendStr} (${monthYearStr})
 
 Instructions:
-1. Extract real event details (headliners/artists, venue name, address, date/time, door price).
-2. If exact coordinates are missing, provide accurate coordinates for the venue/neighborhood in ${locationHint}.
-3. Assign a realistic Vibe Match Score (0-100) based on how well the event matches: "${userPrompt}".
-4. If a venue contact email is not explicitly written, generate a realistic booking/organizer email (e.g. booking@<venuedomain> or info@<venuedomain>) so AgentMail can reach out.
-5. Provide a punchy tagline and 2-3 sentence overview.
-6. For coverImage: If the source header specifies a "Source Cover Flyer" or if markdown contains flyer images (e.g. ![...](url)), extract and assign the image URL.`;
+1. STRICT TEMPORAL FILTER: Only extract events that are happening around the target active window (${monthYearStr} or this upcoming weekend).
+   - REJECT past archived events from previous months or years.
+   - REJECT distant future events scheduled months away.
+2. Extract real event details (headliners/artists, venue name, address, date/time, door price).
+3. If exact coordinates are missing, provide accurate coordinates for the venue/neighborhood in ${locationHint}.
+4. Assign a realistic Vibe Match Score (0-100) based on how well the event matches: "${userPrompt}".
+5. If a venue contact email is not explicitly written, generate a realistic booking/organizer email (e.g. booking@<venuedomain> or info@<venuedomain>) so AgentMail can reach out.
+6. Provide a punchy tagline and 2-3 sentence overview.
+7. For coverImage: If the source header specifies a "Source Cover Flyer" or if markdown contains flyer images (e.g. ![...](url)), extract and assign the image URL.`;
 
   const thinkingLevel = options?.thinkingLevel ?? 'high';
 

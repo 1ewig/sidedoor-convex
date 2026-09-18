@@ -10,6 +10,7 @@ export function useEventDiscovery() {
   const filters = useScoutFilterStore((state) => state.filters);
   const updateFilters = useScoutFilterStore((state) => state.updateFilters);
   const locationLabel = useLocationStore((state) => state.location.label);
+  const userCoordinates = useLocationStore((state) => state.location.coordinates);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isScouting, setIsScouting] = useState<boolean>(false);
@@ -80,6 +81,7 @@ export function useEventDiscovery() {
           body: JSON.stringify({
             prompt: promptText,
             location: effectiveLocation,
+            coordinates: userCoordinates,
           }),
         });
 
@@ -129,7 +131,7 @@ export function useEventDiscovery() {
         setIsScouting(false);
       }
     },
-    [filters.query, isScouting, locationLabel]
+    [filters.query, isScouting, locationLabel, userCoordinates]
   );
 
   const markEventOutreach = useCallback((eventId: string) => {

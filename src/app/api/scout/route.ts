@@ -5,12 +5,15 @@ import {
   extractEventsFromMarkdown,
   ScrapedPageInput,
 } from '@/lib/ai';
+import { calculateHaversineDistanceKm } from '@/lib/geo';
+import { Coordinates } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const prompt = body?.prompt?.trim();
     const location = body?.location?.trim() || 'Brooklyn / New York City';
+    const userCoords = body?.coordinates as Coordinates | undefined;
 
     if (!prompt) {
       return NextResponse.json(
@@ -104,11 +107,34 @@ export async function POST(req: NextRequest) {
     }
 
     // STEP 3: Extraction via Gemini Flash
-    const events = await extractEventsFromMarkdown(
+    const rawEvents = await extractEventsFromMarkdown(
       allScrapedPages,
       prompt,
       location
     );
+
+    // Compute exact mathematical distance if user coordinates were provided
+    const events = rawEvents.map((evt) => {
+      if (
+        userCoords &&
+        typeof userCoords.lat === 'number' &&
+        typeof userCoords.lng === 'number' &&
+        typeof evt.coordinates?.lat === 'number' &&
+        typeof evt.coordinates?.lng === 'number'
+      ) {
+        const exactDistance = calculateHaversineDistanceKm(
+          userCoords.lat,
+          userCoords.lng,
+          evt.coordinates.lat,
+          evt.coordinates.lng
+        );
+        return {
+          ...evt,
+          distanceKm: exactDistance,
+        };
+      }
+      return evt;
+    });
 
     return NextResponse.json({
       success: true,
