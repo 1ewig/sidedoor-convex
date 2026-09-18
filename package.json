@@ -8,15 +8,20 @@
     "start": "bun --bun next start",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "test:firecrawl": "bun run scripts/test-firecrawl.ts"
+    "test:firecrawl": "bun run scripts/test-firecrawl.ts",
+    "test:ai": "bun run scripts/test-ai-queries.ts",
+    "test:pipeline": "bun run scripts/test-pipeline.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.75",
     "@mendable/firecrawl-js": "^4.40.0",
+    "ai": "^7.0.106",
     "dotenv": "^18.0.0",
     "lucide-react": "^1.47.0",
     "next": "16.3.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
