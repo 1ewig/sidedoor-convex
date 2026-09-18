@@ -1,18 +1,15 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { LocalEvent, SearchFilterState, ScoutLog } from '@/types';
+import { LocalEvent, ScoutLog } from '@/types';
 import { INITIAL_EVENTS, MOCK_CRAWLER_SCRIPTS } from '@/lib/mockData';
+import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 
 export function useEventDiscovery() {
   const [events, setEvents] = useState<LocalEvent[]>(INITIAL_EVENTS);
-  const [filters, setFilters] = useState<SearchFilterState>({
-    query: 'indie rock shows, outdoor markets, or art openings this weekend within 20 km',
-    radiusKm: 20,
-    category: 'all',
-    onlyFree: false,
-    minScore: 80,
-  });
+  const filters = useScoutFilterStore((state) => state.filters);
+  const updateFilters = useScoutFilterStore((state) => state.updateFilters);
+
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isScouting, setIsScouting] = useState<boolean>(false);
   const [logs, setLogs] = useState<ScoutLog[]>(MOCK_CRAWLER_SCRIPTS);
@@ -132,10 +129,6 @@ export function useEventDiscovery() {
     },
     [filters.query, isScouting]
   );
-
-  const updateFilters = useCallback((partial: Partial<SearchFilterState>) => {
-    setFilters((prev) => ({ ...prev, ...partial }));
-  }, []);
 
   const markEventOutreach = useCallback((eventId: string) => {
     setEvents((prev) =>

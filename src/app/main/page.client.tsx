@@ -11,6 +11,7 @@ import { DiscoveredFeed } from '@/components/discovery/DiscoveredFeed';
 import { CorrespondenceDrawer } from '@/components/agent/CorrespondenceDrawer';
 import { ScoutFilterDrawer } from '@/components/discovery/ScoutFilterDrawer';
 import { LocationPinModal } from '@/components/location/LocationPinModal';
+import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { LocalEvent } from '@/types';
 
 export function PageClient() {
@@ -18,7 +19,10 @@ export function PageClient() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [autoInquire, setAutoInquire] = useState(true);
+
+  const autoInquire = useScoutFilterStore((state) => state.autoInquire);
+  const toggleAutoInquire = useScoutFilterStore((state) => state.toggleAutoInquire);
+  const resetFilters = useScoutFilterStore((state) => state.resetFilters);
 
   const {
     events,
@@ -42,13 +46,7 @@ export function PageClient() {
   } = useUserLocation();
 
   const handleResetDefaults = () => {
-    updateFilters({
-      radiusKm: 20,
-      category: 'all',
-      onlyFree: false,
-      minScore: 80,
-    });
-    setAutoInquire(true);
+    resetFilters();
   };
 
   const handleTriggerDiscovery = () => {
@@ -138,7 +136,7 @@ export function PageClient() {
         filters={filters}
         onUpdateFilters={updateFilters}
         autoInquire={autoInquire}
-        onToggleAutoInquire={() => setAutoInquire(!autoInquire)}
+        onToggleAutoInquire={toggleAutoInquire}
         onResetDefaults={handleResetDefaults}
       />
 

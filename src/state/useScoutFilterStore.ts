@@ -1,0 +1,93 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { SearchFilterState, EventCategory } from '@/types';
+
+export const DEFAULT_SEARCH_FILTERS: SearchFilterState = {
+  query: 'indie rock shows, outdoor markets, or art openings this weekend within 20 km',
+  radiusKm: 20,
+  category: 'all',
+  onlyFree: false,
+  minScore: 80,
+};
+
+interface ScoutFilterState {
+  filters: SearchFilterState;
+  autoInquire: boolean;
+  isFilterDrawerOpen: boolean;
+
+  // Actions
+  updateFilters: (partial: Partial<SearchFilterState>) => void;
+  setQuery: (query: string) => void;
+  setRadius: (radiusKm: number) => void;
+  setCategory: (category: EventCategory | 'all') => void;
+  setOnlyFree: (onlyFree: boolean) => void;
+  setMinScore: (minScore: number) => void;
+  setAutoInquire: (autoInquire: boolean) => void;
+  toggleAutoInquire: () => void;
+  setFilterDrawerOpen: (isOpen: boolean) => void;
+  resetFilters: () => void;
+}
+
+export const useScoutFilterStore = create<ScoutFilterState>()(
+  persist(
+    (set) => ({
+      filters: DEFAULT_SEARCH_FILTERS,
+      autoInquire: true,
+      isFilterDrawerOpen: false,
+
+      updateFilters: (partial) => {
+        set((state) => ({
+          filters: { ...state.filters, ...partial },
+        }));
+      },
+
+      setQuery: (query) => {
+        set((state) => ({
+          filters: { ...state.filters, query },
+        }));
+      },
+
+      setRadius: (radiusKm) => {
+        set((state) => ({
+          filters: { ...state.filters, radiusKm },
+        }));
+      },
+
+      setCategory: (category) => {
+        set((state) => ({
+          filters: { ...state.filters, category },
+        }));
+      },
+
+      setOnlyFree: (onlyFree) => {
+        set((state) => ({
+          filters: { ...state.filters, onlyFree },
+        }));
+      },
+
+      setMinScore: (minScore) => {
+        set((state) => ({
+          filters: { ...state.filters, minScore },
+        }));
+      },
+
+      setAutoInquire: (autoInquire) => set({ autoInquire }),
+
+      toggleAutoInquire: () => set((state) => ({ autoInquire: !state.autoInquire })),
+
+      setFilterDrawerOpen: (isFilterDrawerOpen) => set({ isFilterDrawerOpen }),
+
+      resetFilters: () => {
+        set({ filters: DEFAULT_SEARCH_FILTERS });
+      },
+    }),
+    {
+      name: 'sidedoor_scout_preferences',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        filters: state.filters,
+        autoInquire: state.autoInquire,
+      }),
+    }
+  )
+);
