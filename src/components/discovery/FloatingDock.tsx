@@ -23,7 +23,7 @@ export function FloatingDock({
   onToggleResults,
   onTriggerDiscovery,
 }: FloatingDockProps) {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onTriggerDiscovery();
@@ -31,86 +31,65 @@ export function FloatingDock({
   };
 
   return (
-    <div className="relative w-full">
-      {/* Peeking Mini Cards from Behind Dock */}
-      <div className="absolute -top-7 left-8 flex items-end -space-x-4 pointer-events-none transition-transform duration-300 hover:-translate-y-1">
-        {/* Stub 1 */}
-        <div className="w-16 h-10 bg-[var(--theme-bg-surface)]/95 rounded-t-lg border border-[var(--theme-border-subtle)] shadow-xs transform -rotate-6 flex flex-col justify-end p-1.5 opacity-70">
-          <div className="w-6 h-1 bg-[var(--theme-border-strong)] rounded mb-1" />
-          <div className="w-8 h-1 bg-[var(--theme-border-subtle)] rounded" />
-        </div>
-        {/* Stub 2 */}
-        <div className="w-16 h-11 bg-[var(--theme-bg-surface)]/95 rounded-t-lg border border-[var(--theme-border-subtle)] shadow-xs transform rotate-2 flex flex-col justify-end p-1.5 opacity-90">
-          <div className="w-7 h-1 bg-[var(--theme-border-strong)] rounded mb-1" />
-          <div className="w-10 h-1 bg-[var(--theme-border-subtle)] rounded" />
-        </div>
-        {/* Stub 3 (Active) */}
-        <div className="w-20 h-12 bg-[var(--theme-bg-surface)] rounded-t-lg border border-[var(--theme-border-subtle)] shadow-xs transform -rotate-2 flex flex-col justify-between p-2 z-0">
-          <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-brand-accent)] uppercase font-semibold tracking-wider">
-            98% Match
-          </span>
-          <div className="w-10 h-1 bg-[var(--theme-border-strong)] rounded" />
-        </div>
-      </div>
+    <div className="relative w-full max-w-xl mx-auto">
+      {/* Minimal Unified Dock */}
+      <div className="bg-[var(--theme-bg-surface)] rounded-full px-3 py-2 sm:px-4 sm:py-2.5 shadow-[var(--shadow-ambient)] border border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)] transition-all focus-within:border-[var(--theme-text-primary)]/40 focus-within:shadow-[var(--shadow-float)] flex items-center gap-2.5">
+        {/* Scouts Count Chip */}
+        <button
+          type="button"
+          onClick={onToggleResults}
+          title="Toggle discovered scouts feed"
+          className="shrink-0 px-2.5 py-1 rounded-full bg-[var(--theme-bg-base)] text-[var(--text-2xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] hover:bg-[var(--theme-border-subtle)] transition cursor-pointer"
+        >
+          {totalScouts} scouts
+        </button>
 
-      {/* Main Dock Container */}
-      <div className="relative z-10 w-full bg-[var(--theme-bg-surface)] rounded-[32px] p-4 sm:p-5 shadow-[var(--shadow-ambient)] border border-[var(--theme-border-subtle)] transition-all focus-within:shadow-xl">
-        {/* Top row: Status Tag & Natural Language Input */}
-        <div className="flex items-start gap-3">
+        {/* Input */}
+        <input
+          type="text"
+          value={prompt}
+          onChange={(e) => onPromptChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 bg-transparent text-[var(--text-sm)] text-[var(--theme-text-primary)] placeholder-[var(--theme-text-muted)] focus:outline-none min-w-0 font-sans"
+          placeholder="What kind of gatherings are you scouting for?"
+        />
+
+        {/* Controls & Submit */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Radius Button */}
           <button
             type="button"
-            onClick={onToggleResults}
-            className="shrink-0 px-2.5 py-1 mt-0.5 rounded-full bg-[var(--theme-bg-base)] text-[var(--text-2xs)] font-medium text-[var(--theme-text-secondary)] hover:bg-[var(--theme-border-subtle)] transition cursor-pointer"
+            onClick={onCycleRadius}
+            title="Search Perimeter"
+            className="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-[var(--theme-bg-base)] text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] text-[var(--text-2xs)] font-mono transition cursor-pointer"
           >
-            {totalScouts} scouts
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>{radiusLabel}</span>
           </button>
-          <textarea
-            rows={2}
-            value={prompt}
-            onChange={(e) => onPromptChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="w-full bg-transparent text-[var(--text-sm)] text-[var(--theme-text-primary)] placeholder-[var(--theme-text-muted)] focus:outline-none resize-none pt-0.5 leading-[var(--leading-relaxed)] font-sans"
-            placeholder="Indie rock shows, outdoor night fleas, or art vernissages within 20 km of me this weekend..."
-          />
-        </div>
 
-        {/* Bottom row: Controls & Action Trigger */}
-        <div className="flex items-center justify-between pt-4 mt-2 border-t border-[var(--theme-border-subtle)]">
-          <div className="flex items-center gap-3">
-            {/* Radius Button */}
-            <button
-              type="button"
-              onClick={onCycleRadius}
-              title="Search Perimeter"
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] text-[var(--text-xs)] transition cursor-pointer"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span className="font-mono text-[var(--text-2xs)]">{radiusLabel}</span>
-            </button>
+          {/* Auto-Inquire Toggle */}
+          <button
+            type="button"
+            onClick={onToggleAutoInquire}
+            title={autoInquire ? 'Auto-Inquire via AgentMail: Active' : 'Auto-Inquire via AgentMail: Off'}
+            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[var(--text-2xs)] transition cursor-pointer ${
+              autoInquire
+                ? 'bg-[var(--theme-brand-accent)]/10 text-[var(--theme-brand-accent)] font-medium'
+                : 'text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] hover:bg-[var(--theme-bg-base)]'
+            }`}
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Auto</span>
+          </button>
 
-            {/* AgentMail Auto-Dispatch Indicator */}
-            <button
-              type="button"
-              onClick={onToggleAutoInquire}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[var(--text-xs)] transition cursor-pointer ${
-                autoInquire
-                  ? 'text-[var(--theme-brand-accent)]'
-                  : 'text-[var(--theme-text-muted)] opacity-50 hover:opacity-80'
-              }`}
-            >
-              <Link2 className="w-4 h-4" />
-              <span className="text-[var(--text-2xs)]">Auto-Inquire</span>
-            </button>
-          </div>
-
-          {/* Circular Arrow Action Button */}
+          {/* Action Trigger Button */}
           <button
             type="button"
             onClick={onTriggerDiscovery}
             aria-label="Discover Gatherings"
-            className="w-10 h-10 rounded-full bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
           >
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
