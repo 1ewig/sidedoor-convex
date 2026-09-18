@@ -1,14 +1,21 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { MapPin, Navigation, Loader2, Check, Search } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { MapPin, Navigation, Loader2, Search, Check } from 'lucide-react';
 import { Coordinates } from '@/types';
+
+interface LocationSearchResult {
+  label: string;
+  fullAddress: string;
+  coordinates: Coordinates;
+}
 
 interface LocationAnchorProps {
   locationLabel: string;
   isLocating: boolean;
   onLocateMe: () => void;
   onSelectLocation: (label: string, coords?: Coordinates) => void;
+  onSearchLocations?: (query: string) => Promise<LocationSearchResult[]>;
   error?: string | null;
 }
 
@@ -26,11 +33,15 @@ export function LocationAnchor({
   isLocating,
   onLocateMe,
   onSelectLocation,
+  onSearchLocations,
   error,
 }: LocationAnchorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [customInput, setCustomInput] = useState('');
+  const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close on outside click
   useEffect(() => {
@@ -45,19 +56,63 @@ export function LocationAnchor({
     }
   }, [isOpen]);
 
+  // Debounced search when typing
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setCustomInput(val);
+
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      if (!onSearchLocations || val.trim().length < 2) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      searchTimeoutRef.current = setTimeout(async () => {
+        const results = await onSearchLocations(val);
+        setSearchResults(results);
+        setIsSearching(false);
+      }, 300);
+    },
+    [onSearchLocations]
+  );
+
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (customInput.trim()) {
+    if (searchResults.length > 0) {
+      const first = searchResults[0];
+      onSelectLocation(first.label, first.coordinates);
+      setCustomInput('');
+      setSearchResults([]);
+      setIsOpen(false);
+    } else if (customInput.trim()) {
       onSelectLocation(customInput.trim());
       setCustomInput('');
+      setSearchResults([]);
       setIsOpen(false);
     }
   };
 
-  const handleSelectHub = (hub: { label: string; coords: Coordinates }) => {
-    onSelectLocation(hub.label, hub.coords);
+  const handleSelectResult = (result: LocationSearchResult) => {
+    onSelectLocation(result.label, result.coordinates);
+    setCustomInput('');
+    setSearchResults([]);
     setIsOpen(false);
   };
+
+  const handleSelectHub = (hub: { label: string; coords: Coordinates }) => {
+    onSelectLocation(hub.label, hub.coords);
+    setCustomInput('');
+    setSearchResults([]);
+    setIsOpen(false);
+  };
+
+  const isLoading = isLocating || locationLabel === 'Detecting location...';
 
   return (
     <div ref={containerRef} className="relative">
@@ -77,16 +132,16 @@ export function LocationAnchor({
           </span>
         </button>
 
-        {/* Dedicated "Locate Me" Quick GPS Action */}
+        {/* Dedicated "Locate Me" Quick GPS / IP Action */}
         <button
           type="button"
           onClick={onLocateMe}
-          disabled={isLocating}
-          title="Detect my current location (GPS)"
-          aria-label="Detect my current location via GPS"
+          disabled={isLoading}
+          title="Detect my current location (GPS / IP)"
+          aria-label="Detect my current location via GPS or IP"
           className="pl-1.5 pr-2.5 py-1.5 border-l border-[var(--theme-border-subtle)] text-[var(--theme-text-muted)] hover:text-[var(--theme-brand-accent)] disabled:opacity-50 transition cursor-pointer"
         >
-          {isLocating ? (
+          {isLoading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--theme-brand-accent)]" />
           ) : (
             <Navigation className="w-3.5 h-3.5" />
@@ -96,7 +151,7 @@ export function LocationAnchor({
 
       {/* Popover Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 rounded-2xl bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] shadow-xl z-50 p-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute top-full left-0 mt-2 w-72 sm:w-84 rounded-2xl bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] shadow-xl z-50 p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between pb-2.5 border-b border-[var(--theme-border-subtle)]">
             <span className="text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] font-sans">
               Scouting Anchor
@@ -123,7 +178,7 @@ export function LocationAnchor({
             {isLocating ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--theme-brand-accent)]" />
             ) : (
-              <span className="text-[10px] font-mono text-[var(--theme-text-muted)]">GPS</span>
+              <span className="text-[10px] font-mono text-[var(--theme-text-muted)]">GPS / IP</span>
             )}
           </button>
 
@@ -133,18 +188,42 @@ export function LocationAnchor({
             </p>
           )}
 
-          {/* Custom Search Form */}
-          <form onSubmit={handleCustomSubmit} className="mt-3">
+          {/* Custom Search Form with Live Suggestions */}
+          <form onSubmit={handleCustomSubmit} className="mt-3 relative">
             <div className="relative flex items-center">
               <input
                 type="text"
                 value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                placeholder="Type city or neighborhood..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] text-[var(--text-xs)] text-[var(--theme-text-primary)] placeholder-[var(--theme-text-muted)] focus:outline-none focus:border-[var(--theme-brand-accent)] font-sans"
+                onChange={handleInputChange}
+                placeholder="Search city or neighborhood..."
+                className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] text-[var(--text-xs)] text-[var(--theme-text-primary)] placeholder-[var(--theme-text-muted)] focus:outline-none focus:border-[var(--theme-brand-accent)] font-sans"
               />
               <Search className="w-3.5 h-3.5 text-[var(--theme-text-muted)] absolute left-2.5 pointer-events-none" />
+              {isSearching && (
+                <Loader2 className="w-3.5 h-3.5 text-[var(--theme-brand-accent)] animate-spin absolute right-2.5 pointer-events-none" />
+              )}
             </div>
+
+            {/* Autocomplete Suggestions List */}
+            {searchResults.length > 0 && (
+              <div className="mt-1.5 space-y-1 max-h-40 overflow-y-auto rounded-xl bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] p-1">
+                {searchResults.map((result) => (
+                  <button
+                    key={`${result.coordinates.lat}-${result.coordinates.lng}-${result.label}`}
+                    type="button"
+                    onClick={() => handleSelectResult(result)}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--theme-bg-surface)] text-[var(--text-xs)] transition cursor-pointer"
+                  >
+                    <div className="font-medium text-[var(--theme-text-primary)] truncate font-sans">
+                      {result.label}
+                    </div>
+                    <div className="text-[10px] text-[var(--theme-text-muted)] truncate font-sans">
+                      {result.fullAddress}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </form>
 
           {/* Cultural Hubs Presets */}
@@ -160,14 +239,14 @@ export function LocationAnchor({
                     key={hub.label}
                     type="button"
                     onClick={() => handleSelectHub(hub)}
-                    className={`w-full px-2.5 py-1.5 rounded-lg text-left text-[var(--text-xs)] flex items-center justify-between transition cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[var(--text-xs)] font-sans transition cursor-pointer ${
                       isCurrent
-                        ? 'bg-[var(--theme-brand-accent)]/10 text-[var(--theme-brand-accent)] font-medium'
-                        : 'hover:bg-[var(--theme-bg-base)] text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)]'
+                        ? 'bg-[var(--theme-bg-base)] text-[var(--theme-brand-accent)] font-medium'
+                        : 'text-[var(--theme-text-secondary)] hover:bg-[var(--theme-bg-base)] hover:text-[var(--theme-text-primary)]'
                     }`}
                   >
                     <span>{hub.label}</span>
-                    {isCurrent && <Check className="w-3 h-3 text-[var(--theme-brand-accent)]" />}
+                    {isCurrent && <Check className="w-3.5 h-3.5 text-[var(--theme-brand-accent)]" />}
                   </button>
                 );
               })}

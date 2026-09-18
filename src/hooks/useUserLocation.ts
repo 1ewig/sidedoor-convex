@@ -1,109 +1,188 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { UserLocation, Coordinates } from '@/types';
 
-const DEFAULT_LOCATION: UserLocation = {
-  label: 'Lower East Side, NY',
-  coordinates: { lat: 40.7182, lng: -73.9924 },
-};
+const STORAGE_KEY = 'sidedoor_user_location';
+const DEFAULT_FALLBACK_LABEL = 'Detecting location...';
+
+interface StoredLocation extends UserLocation {
+  isUserExplicit?: boolean;
+}
 
 export function useUserLocation() {
-  const [location, setLocation] = useState<UserLocation>(DEFAULT_LOCATION);
+  const [location, setLocation] = useState<UserLocation>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed: StoredLocation = JSON.parse(saved);
+          // Only use saved if it was explicitly selected by the user or is a real detected location
+          if (
+            parsed?.label &&
+            parsed?.coordinates &&
+            parsed.label !== DEFAULT_FALLBACK_LABEL &&
+            parsed.label !== 'Lower East Side, NY'
+          ) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return {
+      label: DEFAULT_FALLBACK_LABEL,
+      coordinates: { lat: 32.4927, lng: 74.5313 },
+    };
+  });
+
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const locateMe = useCallback(() => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      return;
+  // Helper: Fetch server-side IP geolocation (First-party, immune to client ad-blockers)
+  const fetchFromApiLocate = useCallback(async (): Promise<UserLocation | null> => {
+    try {
+      const res = await fetch('/api/locate', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.label && data.coordinates) {
+          return {
+            label: data.label,
+            coordinates: data.coordinates,
+          };
+        }
+      }
+    } catch {
+      // API call failed, fallback handled in caller
     }
+    return null;
+  }, []);
 
+  // Main Locate Me: Queries GPS first, then automatically resolves via server-side /api/locate
+  const locateMe = useCallback(async () => {
     setIsLocating(true);
     setError(null);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const coords: Coordinates = { lat, lng };
+    let gpsSucceeded = false;
 
-        let resolvedLabel = `${lat.toFixed(2)}°N, ${Math.abs(lng).toFixed(2)}°W`;
-
-        try {
-          // Attempt reverse geocoding for a human-readable city/neighborhood
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14`,
+    // 1. Try Browser Geolocation
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      try {
+        const coords = await new Promise<Coordinates>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            (err) => reject(err),
             {
-              headers: { 'Accept-Language': 'en' },
-              signal: controller.signal,
+              enableHighAccuracy: false, // Prevent hanging on desktop PCs without GPS chips
+              timeout: 4000,
+              maximumAge: 60000,
             }
           );
-          clearTimeout(timeoutId);
+        });
 
+        // If GPS returned coordinates, reverse-geocode via /api/geocode
+        try {
+          const res = await fetch(`/api/geocode?lat=${coords.lat}&lng=${coords.lng}`);
           if (res.ok) {
             const data = await res.json();
-            const address = data.address || {};
-            const neighborhood =
-              address.neighbourhood ||
-              address.suburb ||
-              address.quarter ||
-              address.city_district;
-            const city =
-              address.city ||
-              address.town ||
-              address.municipality ||
-              address.village ||
-              address.state;
-
-            if (neighborhood && city) {
-              resolvedLabel = `${neighborhood}, ${city}`;
-            } else if (city) {
-              resolvedLabel = city;
-            } else if (data.name) {
-              resolvedLabel = data.name;
+            if (data.label) {
+              const newLoc: UserLocation = {
+                label: data.label,
+                coordinates: coords,
+              };
+              setLocation(newLoc);
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...newLoc, isUserExplicit: true }));
+              } catch {}
+              gpsSucceeded = true;
+              setIsLocating(false);
+              return;
             }
           }
         } catch {
-          // Fallback to coordinate string if geocoding fails or times out
+          // Geocode failed, fall through
         }
+      } catch {
+        // Browser GPS denied or unavailable
+      }
+    }
 
-        setLocation({
-          label: resolvedLabel,
-          coordinates: coords,
-        });
-        setIsLocating(false);
-      },
-      (geoError) => {
-        setIsLocating(false);
-        switch (geoError.code) {
-          case geoError.PERMISSION_DENIED:
-            setError('Location permission denied.');
-            break;
-          case geoError.POSITION_UNAVAILABLE:
-            setError('Position unavailable.');
-            break;
-          case geoError.TIMEOUT:
-            setError('Location request timed out.');
-            break;
-          default:
-            setError('Unable to retrieve location.');
-        }
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-    );
-  }, []);
+    // 2. Server-side IP Geolocation fallback (works immediately on any device/network)
+    if (!gpsSucceeded) {
+      const detected = await fetchFromApiLocate();
+      if (detected) {
+        setLocation(detected);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...detected, isUserExplicit: true }));
+        } catch {}
+        setError(null);
+      } else {
+        setError('Could not detect location. Please select or search your city.');
+      }
+    }
 
+    setIsLocating(false);
+  }, [fetchFromApiLocate]);
+
+  // Set custom user selection (with coordinates)
   const setCustomLocation = useCallback((label: string, coordinates?: Coordinates) => {
-    setLocation((prev) => ({
+    const updated: UserLocation = {
       label,
-      coordinates: coordinates || prev.coordinates,
-    }));
+      coordinates: coordinates || { lat: 32.4927, lng: 74.5313 },
+    };
+    setLocation(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...updated, isUserExplicit: true }));
+    } catch {}
     setError(null);
   }, []);
+
+  // Search locations helper for autocomplete
+  const searchLocations = useCallback(async (query: string) => {
+    if (!query || query.trim().length < 2) return [];
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(query.trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        return (data.results || []) as Array<{
+          label: string;
+          fullAddress: string;
+          coordinates: Coordinates;
+        }>;
+      }
+    } catch {
+      // Search failed
+    }
+    return [];
+  }, []);
+
+  // Auto-detect on initial load if no explicit user location was previously saved
+  useEffect(() => {
+    let shouldAutoDetect = true;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed: StoredLocation = JSON.parse(saved);
+        if (
+          parsed?.isUserExplicit &&
+          parsed.label !== DEFAULT_FALLBACK_LABEL &&
+          parsed.label !== 'Lower East Side, NY'
+        ) {
+          shouldAutoDetect = false;
+        }
+      }
+    } catch {}
+
+    if (shouldAutoDetect) {
+      fetchFromApiLocate().then((detected) => {
+        if (detected) {
+          setLocation(detected);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(detected));
+          } catch {}
+        }
+      });
+    }
+  }, [fetchFromApiLocate]);
 
   return {
     location,
@@ -111,5 +190,6 @@ export function useUserLocation() {
     error,
     locateMe,
     setCustomLocation,
+    searchLocations,
   };
 }

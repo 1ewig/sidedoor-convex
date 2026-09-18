@@ -10,6 +10,7 @@ interface HeaderProps {
   isLocating: boolean;
   onLocateMe: () => void;
   onSelectLocation: (label: string, coords?: Coordinates) => void;
+  onSearchLocations?: (query: string) => Promise<any>;
   locationError?: string | null;
 }
 
@@ -21,6 +22,7 @@ export function Header({
   isLocating,
   onLocateMe,
   onSelectLocation,
+  onSearchLocations,
   locationError,
 }: HeaderProps) {
   return (
@@ -42,6 +44,7 @@ export function Header({
           isLocating={isLocating}
           onLocateMe={onLocateMe}
           onSelectLocation={onSelectLocation}
+          onSearchLocations={onSearchLocations}
           error={locationError}
         />
 

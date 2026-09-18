@@ -37,6 +37,7 @@ export function PageClient() {
     error: locationError,
     locateMe,
     setCustomLocation,
+    searchLocations,
   } = useUserLocation();
 
   const handleResetDefaults = () => {
@@ -92,6 +93,7 @@ export function PageClient() {
         isLocating={isLocating}
         onLocateMe={locateMe}
         onSelectLocation={setCustomLocation}
+        onSearchLocations={searchLocations}
         locationError={locationError}
       />
 
