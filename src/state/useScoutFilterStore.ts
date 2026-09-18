@@ -12,7 +12,6 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilterState = {
 
 interface ScoutFilterState {
   filters: SearchFilterState;
-  autoInquire: boolean;
   isFilterDrawerOpen: boolean;
 
   // Actions
@@ -22,8 +21,6 @@ interface ScoutFilterState {
   setCategory: (category: EventCategory | 'all') => void;
   setOnlyFree: (onlyFree: boolean) => void;
   setMinScore: (minScore: number) => void;
-  setAutoInquire: (autoInquire: boolean) => void;
-  toggleAutoInquire: () => void;
   setFilterDrawerOpen: (isOpen: boolean) => void;
   resetFilters: () => void;
 }
@@ -32,7 +29,6 @@ export const useScoutFilterStore = create<ScoutFilterState>()(
   persist(
     (set) => ({
       filters: DEFAULT_SEARCH_FILTERS,
-      autoInquire: true,
       isFilterDrawerOpen: false,
 
       updateFilters: (partial) => {
@@ -71,10 +67,6 @@ export const useScoutFilterStore = create<ScoutFilterState>()(
         }));
       },
 
-      setAutoInquire: (autoInquire) => set({ autoInquire }),
-
-      toggleAutoInquire: () => set((state) => ({ autoInquire: !state.autoInquire })),
-
       setFilterDrawerOpen: (isFilterDrawerOpen) => set({ isFilterDrawerOpen }),
 
       resetFilters: () => {
@@ -86,7 +78,6 @@ export const useScoutFilterStore = create<ScoutFilterState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         filters: state.filters,
-        autoInquire: state.autoInquire,
       }),
     }
   )

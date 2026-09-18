@@ -20,8 +20,6 @@ export function PageClient() {
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
-  const autoInquire = useScoutFilterStore((state) => state.autoInquire);
-  const toggleAutoInquire = useScoutFilterStore((state) => state.toggleAutoInquire);
   const resetFilters = useScoutFilterStore((state) => state.resetFilters);
 
   const {
@@ -136,8 +134,6 @@ export function PageClient() {
         onClose={() => setIsFilterDrawerOpen(false)}
         filters={filters}
         onUpdateFilters={updateFilters}
-        autoInquire={autoInquire}
-        onToggleAutoInquire={toggleAutoInquire}
         onResetDefaults={handleResetDefaults}
       />
 

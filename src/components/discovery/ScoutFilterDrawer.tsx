@@ -11,7 +11,6 @@ import {
   Gauge,
   Tag,
   Ticket,
-  Mail,
 } from 'lucide-react';
 import { SearchFilterState, EventCategory } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
@@ -21,8 +20,6 @@ interface ScoutFilterDrawerProps {
   onClose: () => void;
   filters: SearchFilterState;
   onUpdateFilters: (updates: Partial<SearchFilterState>) => void;
-  autoInquire: boolean;
-  onToggleAutoInquire: () => void;
   onResetDefaults: () => void;
 }
 
@@ -85,8 +82,6 @@ export function ScoutFilterDrawer({
   onClose,
   filters,
   onUpdateFilters,
-  autoInquire,
-  onToggleAutoInquire,
   onResetDefaults,
 }: ScoutFilterDrawerProps) {
   // Close on Escape key
@@ -265,9 +260,9 @@ export function ScoutFilterDrawer({
                 </div>
               </div>
 
-              {/* Group: Automation */}
+              {/* Group: Admission */}
               <div className="space-y-3">
-                <GroupLabel>Automation</GroupLabel>
+                <GroupLabel>Admission</GroupLabel>
 
                 {/* Admission Filter (Free Only) */}
                 <div className="p-4 bg-[var(--theme-bg-base)] rounded-xl border border-[var(--theme-border-subtle)] flex items-center justify-between gap-4">
@@ -285,30 +280,6 @@ export function ScoutFilterDrawer({
                     onChange={() => onUpdateFilters({ onlyFree: !filters.onlyFree })}
                     label="Filter for free events only"
                   />
-                </div>
-
-                {/* AgentMail Autonomous Outreach */}
-                <div className="p-4 bg-[var(--theme-bg-base)] rounded-xl border border-[var(--theme-border-subtle)] space-y-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] font-sans">
-                        <Mail className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
-                        AgentMail Auto-Inquire
-                      </p>
-                      <p className="text-[var(--text-2xs)] text-[var(--theme-brand-accent)] font-mono mt-1 truncate">
-                        scout-alpha@sidedoor.agentmail.to
-                      </p>
-                    </div>
-                    <Toggle
-                      checked={autoInquire}
-                      onChange={onToggleAutoInquire}
-                      label="Toggle AgentMail autonomous inquiry"
-                    />
-                  </div>
-                  <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans leading-[var(--leading-snug)] pt-3 border-t border-[var(--theme-border-subtle)]">
-                    Automatically dispatches polite inquiries to venue booking agents when door
-                    tickets, set times, or RSVP links are unlisted.
-                  </p>
                 </div>
               </div>
             </div>
