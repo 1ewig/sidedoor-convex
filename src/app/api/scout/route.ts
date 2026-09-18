@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import FirecrawlApp from '@mendable/firecrawl-js';
 import {
   generateDiscoveryQueries,
-  extractEventsFromMarkdown,
+  runHybridEventDiscovery,
   ScrapedPageInput,
 } from '@/lib/ai';
-import { calculateHaversineDistanceKm } from '@/lib/geo';
 import { Coordinates } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -51,13 +50,13 @@ export async function POST(req: NextRequest) {
     // STEP 1: Query generation via Gemini Flash
     const queryResult = await generateDiscoveryQueries(prompt, location);
 
-    // STEP 2: Multi-query parallel crawl via Firecrawl
+    // STEP 2: Multi-query parallel crawl via Firecrawl (requesting 'markdown' + 'rawHtml' for Schema.org JSON-LD)
     const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
     const searchSettled = await Promise.allSettled(
       queryResult.queries.map((q) =>
         firecrawl.search(q, {
           limit: 2,
-          scrapeOptions: { formats: ['markdown'] },
+          scrapeOptions: { formats: ['markdown', 'rawHtml'] },
         })
       )
     );
@@ -73,6 +72,7 @@ export async function POST(req: NextRequest) {
           seenUrls.add(item.url);
 
           const markdown = item.markdown || '';
+          const rawHtml = item.rawHtml || item.html || '';
           const ogImage =
             item.metadata?.ogImage ||
             item.metadata?.['og:image'] ||
@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
             url: item.url,
             title: item.title || item.metadata?.title || 'Event Calendar Listing',
             markdown,
+            rawHtml,
             ogImage: flyerImage,
           });
         }
@@ -106,39 +107,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // STEP 3: Extraction via Gemini Flash
-    const rawEvents = await extractEventsFromMarkdown(
+    // STEP 3: Two-Lane Hybrid Discovery (Deterministic Lane A + Deep Lane B + Semantic Curator)
+    const discoveryResult = await runHybridEventDiscovery(
       allScrapedPages,
       prompt,
-      location
+      location,
+      userCoords
     );
-
-    // Compute exact mathematical distance if user coordinates were provided
-    const events = rawEvents.map((evt) => {
-      if (
-        userCoords &&
-        typeof userCoords.lat === 'number' &&
-        typeof userCoords.lng === 'number' &&
-        typeof evt.coordinates?.lat === 'number' &&
-        typeof evt.coordinates?.lng === 'number'
-      ) {
-        const exactDistance = calculateHaversineDistanceKm(
-          userCoords.lat,
-          userCoords.lng,
-          evt.coordinates.lat,
-          evt.coordinates.lng
-        );
-        return {
-          ...evt,
-          distanceKm: exactDistance,
-        };
-      }
-      return evt;
-    });
 
     return NextResponse.json({
       success: true,
-      events,
+      events: discoveryResult.events,
+      stats: discoveryResult.stats,
       queries: queryResult.queries,
       vibeTags: queryResult.vibeTags,
       pagesScrapedCount: allScrapedPages.length,

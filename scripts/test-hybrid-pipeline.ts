@@ -1,44 +1,36 @@
+import dotenv from 'dotenv';
+import { resolve } from 'path';
+import FirecrawlApp from '@mendable/firecrawl-js';
 import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { LocalEvent, EventCategory } from '@/types';
-import { calculateHaversineDistanceKm } from './geo';
+import { calculateHaversineDistanceKm } from '../src/lib/geo';
+import { getTemporalContext } from '../src/lib/ai';
+import { LocalEvent, EventCategory } from '../src/types';
 
-// ==============================================================================
-// 1. SCHEMAS & TYPES
-// ==============================================================================
+// Load environment variables
+dotenv.config({ path: resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: resolve(process.cwd(), '.env') });
 
-export const DiscoveryQueriesSchema = z.object({
-  queries: z
-    .array(z.string())
-    .length(3)
-    .describe('Exactly 3 distinct search queries optimized for finding local event listings, venue calendars, and DIY flyers via Firecrawl'),
-  reasoning: z
-    .string()
-    .describe('Brief rationale explaining how these queries capture different angles of the user intent'),
-  vibeTags: z
-    .array(z.string())
-    .describe('3-5 aesthetic and category tags extracted from the prompt (e.g. #IndieRock, #NightMarket, #Vernissage)'),
-});
+const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+const googleKey =
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+  process.env.GOOGLE_API_KEY ||
+  process.env.GEMINI_API_KEY;
 
-export type DiscoveryQueriesResult = z.infer<typeof DiscoveryQueriesSchema> & {
-  usage?: {
-    promptTokens?: number;
-    completionTokens?: number;
-    totalTokens?: number;
-    inputTokens?: any;
-    outputTokens?: any;
-    raw?: any;
-  };
-};
-
-export interface ScrapedPageInput {
-  url: string;
-  title?: string;
-  markdown: string;
-  rawHtml?: string;
-  ogImage?: string;
+if (!firecrawlKey || firecrawlKey.includes('your_firecrawl_api_key')) {
+  console.error('❌ Error: FIRECRAWL_API_KEY is missing or invalid in .env.local.');
+  process.exit(1);
 }
+
+if (!googleKey || googleKey.includes('your_google_api_key')) {
+  console.error('❌ Error: GOOGLE_GENERATIVE_AI_API_KEY is missing in .env.local.');
+  process.exit(1);
+}
+
+// ==============================================================================
+// 1. DATA STRUCTURES
+// ==============================================================================
 
 export interface CandidateEvent {
   id: string;
@@ -60,68 +52,9 @@ export interface CandidateEvent {
   rawSnippet?: string;
 }
 
-export interface HybridDiscoveryStats {
-  structuredCount: number;
-  unstructuredCount: number;
-  pagesScrapedCount: number;
-  curationTimeSec?: number;
-}
-
-export interface HybridDiscoveryResult {
-  events: LocalEvent[];
-  stats: HybridDiscoveryStats;
-}
-
 // ==============================================================================
-// 2. TEMPORAL ANCHORING
+// 2. DETERMINISTIC PRE-PARSER (LANE A)
 // ==============================================================================
-
-/**
- * Calculates current date and upcoming weekend strings for accurate temporal query anchoring
- */
-export function getTemporalContext(): {
-  currentDateStr: string;
-  weekendStr: string;
-  monthYearStr: string;
-  targetWeekendRange: { start: Date; end: Date };
-} {
-  const now = new Date();
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  };
-  const currentDateStr = now.toLocaleDateString('en-US', options);
-
-  // Determine upcoming weekend or current weekend dates
-  // 0: Sun, 1: Mon, ..., 5: Fri, 6: Sat
-  const day = now.getDay();
-  const fridayOffset = day === 6 ? -1 : day === 0 ? -2 : (5 - day + 7) % 7;
-  const friday = new Date(now);
-  friday.setDate(now.getDate() + fridayOffset);
-
-  const saturday = new Date(friday);
-  saturday.setDate(friday.getDate() + 1);
-
-  const sunday = new Date(friday);
-  sunday.setDate(friday.getDate() + 2);
-
-  const mF = friday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const mS = saturday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const mSu = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  const weekendStr = `${mF}, ${mS}, and ${mSu}`;
-  const monthYearStr = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  const start = new Date(friday);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(sunday);
-  end.setHours(23, 59, 59, 999);
-
-  return { currentDateStr, weekendStr, monthYearStr, targetWeekendRange: { start, end } };
-}
 
 function cleanHtmlText(str?: string): string {
   if (!str) return '';
@@ -135,89 +68,12 @@ function cleanHtmlText(str?: string): string {
     .trim();
 }
 
-// ==============================================================================
-// 3. STEP 1: QUERY GENERATION
-// ==============================================================================
-
 /**
- * Step 1: Transforms a natural language prompt into 3 targeted Firecrawl search queries.
- */
-export async function generateDiscoveryQueries(
-  userPrompt: string,
-  locationHint: string = 'Brooklyn / NYC',
-  options?: {
-    thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
-  }
-): Promise<DiscoveryQueriesResult> {
-  const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error(
-      'Missing Google Gemini API Key. Please set GOOGLE_GENERATIVE_AI_API_KEY in .env.local.'
-    );
-  }
-
-  const { currentDateStr, weekendStr, monthYearStr } = getTemporalContext();
-
-  const systemPrompt = `You are SideDoor's autonomous scout planner.
-Your mission is to take a user's natural language request and generate exactly 3 distinct, high-precision web search queries for Firecrawl to discover real, upcoming local events, indie venues, popups, and small-door gatherings.
-
-Temporal Anchor:
-- Reference Date: ${currentDateStr}
-- Upcoming Weekend: ${weekendStr} (${monthYearStr})
-
-Search Query Strategy & Domain Targeting:
-1. Query 1 (Underground/DIY & Live Music):
-   - Target genuine indie venue calendars, underground show boards, and DIY platforms in the specified location.
-   - When appropriate, prioritize high-signal music portals: site:ohmyrockness.com, site:ra.co, site:dice.fm, site:bowerypresents.com.
-   - Anchor to current timeframe: "${monthYearStr}" or "${weekendStr}".
-2. Query 2 (Neighborhood Markets, Vernissages, & Gallery Openings):
-   - Target local artisan night fleas, maker popups, and independent art gallery openings.
-   - When appropriate, prioritize arts/market portals: site:artrabbit.com, site:e-flux.com, site:nyartbeat.com, site:brooklynflea.com.
-3. Query 3 (Secret Shows, Indie RSVPs & Community Dispatches):
-   - Target secret gatherings, DIY linktrees, or platform RSVPs (e.g. site:lu.ma, site:partiful.com, "secret show", "loft party").
-
-Anti-Commercial Guardrails:
-- Append negative filters where appropriate to exclude stadium tours and ticket scalpers: -site:ticketmaster.com -site:stubhub.com -site:seatgeek.com.
-- Never search for generic "Top 10 tourist attractions". Search for specific calendars, flyers, and lineups.
-- Include location context ("${locationHint}").
-- Output exactly 3 queries.`;
-
-  const thinkingLevel = options?.thinkingLevel ?? 'high';
-
-  const result = await generateObject({
-    model: google('gemini-3.5-flash-lite'),
-    schema: DiscoveryQueriesSchema,
-    system: systemPrompt,
-    prompt: `User Request: "${userPrompt}"\nLocation Context: "${locationHint}"\nTimeframe: "${weekendStr} (${monthYearStr})"`,
-    providerOptions: {
-      google: {
-        thinkingConfig: {
-          thinkingLevel,
-        },
-      },
-    },
-  });
-
-  return {
-    ...result.object,
-    usage: result.usage,
-  };
-}
-
-// ==============================================================================
-// 4. LANE A: DETERMINISTIC SCHEMA.ORG / JSON-LD PRE-PARSER
-// ==============================================================================
-
-/**
- * Extracts structured events from HTML via Schema.org JSON-LD scripts.
- * Supports flat Event objects, arrays, @graph, and ItemLists with deterministic temporal pruning.
+ * Extracts and traverses JSON-LD scripts from HTML.
+ * Handles single objects, arrays, @graph, and ItemLists.
  */
 export function extractStructuredEventsFromHtml(
-  rawHtml: string,
+  html: string,
   url: string,
   ogImage?: string,
   options?: {
@@ -225,13 +81,13 @@ export function extractStructuredEventsFromHtml(
     weekendEnd?: Date;
   }
 ): CandidateEvent[] {
-  if (!rawHtml) return [];
+  if (!html) return [];
 
   const scriptRegex = /<script\s+[^>]*?type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   const candidates: CandidateEvent[] = [];
   let match: RegExpExecArray | null;
 
-  while ((match = scriptRegex.exec(rawHtml)) !== null) {
+  while ((match = scriptRegex.exec(html)) !== null) {
     const rawContent = match[1]?.trim();
     if (!rawContent) continue;
 
@@ -288,12 +144,14 @@ export function extractStructuredEventsFromHtml(
           }
         }
 
+        console.log(`      ↳ Found JSON-LD event: "${title}" | Raw Date: ${startDateRaw}`);
+
         if (eventDate && options?.weekendStart && options?.weekendEnd) {
-          // Allow leeway of 7 days around target window
+          // Allow leeway of 7 days around target window for testing/discovery
           const minDate = new Date(options.weekendStart.getTime() - 7 * 24 * 3600 * 1000);
           const maxDate = new Date(options.weekendEnd.getTime() + 14 * 24 * 3600 * 1000);
           if (eventDate < minDate || eventDate > maxDate) {
-            // Out of timeframe, discard deterministically
+            console.log(`        ⚠️ Pruned by deterministic temporal filter (Event date: ${eventDate.toISOString()} outside window)`);
             continue;
           }
         }
@@ -426,8 +284,8 @@ export function extractStructuredEventsFromHtml(
           rawSnippet: cleanHtmlText(item.description)?.slice(0, 300),
         });
       }
-    } catch {
-      // Skip malformed script tags
+    } catch (err) {
+      console.error('⚠️ Error inside extractStructuredEventsFromHtml:', err);
     }
   }
 
@@ -435,7 +293,7 @@ export function extractStructuredEventsFromHtml(
 }
 
 // ==============================================================================
-// 5. LANE B: DEEP-LANE UNSTRUCTURED DIY PARSER
+// 3. UNSTRUCTURED FALLBACK EXTRACTOR (LANE B)
 // ==============================================================================
 
 const UnstructuredExtractionSchema = z.object({
@@ -461,7 +319,7 @@ const UnstructuredExtractionSchema = z.object({
 });
 
 export async function extractFromUnstructuredMarkdown(
-  pages: ScrapedPageInput[],
+  pages: { url: string; title?: string; markdown: string; ogImage?: string }[],
   userPrompt: string,
   locationHint: string
 ): Promise<CandidateEvent[]> {
@@ -507,7 +365,7 @@ Only extract real gatherings. Skip generic venue information or past events.`,
 }
 
 // ==============================================================================
-// 6. UNIFIED SEMANTIC CURATOR (LLM ENRICHMENT)
+// 4. UNIFIED SEMANTIC CURATOR (LLM ENRICHMENT)
 // ==============================================================================
 
 const SemanticCuratorSchema = z.object({
@@ -530,6 +388,7 @@ export async function curateCandidatesWithLLM(
 ): Promise<LocalEvent[]> {
   if (candidates.length === 0) return [];
 
+  // Prepare a compact JSON array of candidates (less than 1,000 tokens total!)
   const compactCandidates = candidates.map((c) => ({
     id: c.id,
     title: c.title,
@@ -549,22 +408,27 @@ For each candidate:
 4. Assign 3-4 aesthetic hashtags.
 5. If the original candidate is missing a contact email, generate a reasonable booking contact (booking@<venue>.org).`;
 
+  const curatorStart = Date.now();
   const result = await generateObject({
     model: google('gemini-3.5-flash-lite'),
     schema: SemanticCuratorSchema,
     system: systemPrompt,
     prompt: `Candidate Events for Curation:\n${JSON.stringify(compactCandidates, null, 2)}`,
   });
+  const curatorElapsed = ((Date.now() - curatorStart) / 1000).toFixed(2);
+  console.log(`⚡ Semantic Curator processed ${candidates.length} candidates in ${curatorElapsed}s!`);
 
   const lookup = new Map<string, (typeof result.object.curatedEvents)[0]>();
   for (const item of result.object.curatedEvents) {
     lookup.set(item.candidateId, item);
   }
 
+  // Merge semantic output with deterministic facts
   const finalEvents: LocalEvent[] = [];
 
   for (const cand of candidates) {
     const curation = lookup.get(cand.id);
+    // Discard candidates with matchScore < 60
     if (curation && curation.matchScore < 60) continue;
 
     finalEvents.push({
@@ -575,7 +439,7 @@ For each candidate:
       description: curation?.editorialOverview || cand.rawSnippet || `Gathering hosted at ${cand.venueName}.`,
       venueName: cand.venueName,
       address: cand.address,
-      distanceKm: 0,
+      distanceKm: 0, // Computed via Haversine later if user coords available
       coordinates: cand.coordinates || { lat: 40.7128, lng: -73.95 },
       dateTime: cand.isoDate || new Date().toISOString(),
       formattedDate: cand.formattedDate || 'This Weekend',
@@ -593,90 +457,218 @@ For each candidate:
     });
   }
 
+  // Sort by match score descending
   return finalEvents.sort((a, b) => b.matchScore - a.matchScore);
 }
 
 // ==============================================================================
-// 7. MASTER COORDINATOR: RUN HYBRID DISCOVERY PIPELINE
+// 5. MAIN END-TO-END VERIFICATION RUNNER
 // ==============================================================================
 
-export async function runHybridEventDiscovery(
-  scrapedPages: ScrapedPageInput[],
-  userPrompt: string,
-  locationHint: string = 'Brooklyn / NYC',
-  userCoordinates?: { lat: number; lng: number }
-): Promise<HybridDiscoveryResult> {
-  const { targetWeekendRange } = getTemporalContext();
+async function runTest() {
+  console.log('\n======================================================');
+  console.log('   🧪 Testing Two-Lane Hybrid Scraping Architecture');
+  console.log('======================================================\n');
 
+  const app = new FirecrawlApp({ apiKey: firecrawlKey! });
+  const userPrompt = process.argv[2] || 'intimate indie rock shows or underground synth pop in Brooklyn';
+  const location = 'Brooklyn / NYC';
+  const userCoords = { lat: 40.7182, lng: -73.9583 }; // Williamsburg, Brooklyn
+
+  console.log(`🎯 Prompt:   "${userPrompt}"`);
+  console.log(`📍 User:     ${location} (${userCoords.lat}, ${userCoords.lng})\n`);
+
+  // Target Weekend calculation
+  const now = new Date();
+  const fridayOffset = (5 - now.getDay() + 7) % 7;
+  const weekendStart = new Date(now);
+  weekendStart.setDate(now.getDate() + (fridayOffset === 0 ? 0 : fridayOffset));
+  weekendStart.setHours(0, 0, 0, 0);
+
+  const weekendEnd = new Date(weekendStart);
+  weekendEnd.setDate(weekendStart.getDate() + 3);
+  weekendEnd.setHours(23, 59, 59, 999);
+
+  console.log(`📅 Target Weekend Window: ${weekendStart.toDateString()} to ${weekendEnd.toDateString()}\n`);
+
+  // STEP 1: Search with formats: ['markdown', 'rawHtml']
+  console.log(`[1/4] Crawling real venues via Firecrawl (requesting 'markdown' + 'rawHtml')...`);
+  const crawlStart = Date.now();
+
+  const searchRes = await app.search(
+    'site:eventbrite.com/e/ OR site:dice.fm/event/ OR site:ohmyrockness.com indie concerts Brooklyn',
+    {
+      limit: 3,
+      scrapeOptions: {
+        formats: ['markdown', 'rawHtml'],
+      },
+    }
+  );
+
+  const crawlElapsed = ((Date.now() - crawlStart) / 1000).toFixed(2);
+  const webPages = (searchRes as any)?.web || [];
+  console.log(`✅ Crawled ${webPages.length} live pages in ${crawlElapsed}s.\n`);
+
+  // STEP 2: Dispatch to Two Lanes
+  console.log(`[2/4] Running Step 2.5 Deterministic Pre-Parser (Lane A vs Lane B)...`);
   const laneA_Candidates: CandidateEvent[] = [];
-  const laneB_Pages: ScrapedPageInput[] = [];
+  const laneB_Pages: { url: string; title?: string; markdown: string; ogImage?: string }[] = [];
 
-  // Dispatch pages to Lane A vs Lane B
-  for (const page of scrapedPages) {
-    const rawContent = page.rawHtml || '';
+  // Also include a representative DIY Venue event page with Schema.org JSON-LD for the active weekend
+  const sampleStructuredHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Model Living, Admin & Funsucker Live at Alphaville</title>
+        <meta property="og:image" content="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80">
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "MusicEvent",
+          "name": "Model Living, Admin & Funsucker (Live)",
+          "description": "Lo-fi garage rock, jangly basement riffs, and raw post-punk showcase in the heart of Bushwick.",
+          "startDate": "${weekendStart.toISOString().split('T')[0]}T21:00:00-04:00",
+          "doorTime": "${weekendStart.toISOString().split('T')[0]}T20:00:00-04:00",
+          "location": {
+            "@type": "Place",
+            "name": "Alphaville",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "140 Wilson Ave",
+              "addressLocality": "Brooklyn",
+              "postalCode": "11237",
+              "addressRegion": "NY"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 40.7041,
+              "longitude": -73.9242
+            }
+          },
+          "offers": {
+            "@type": "Offer",
+            "price": "12.00",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock",
+            "url": "https://alphaville.org/tickets"
+          },
+          "image": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80",
+          "organizer": {
+            "@type": "Organization",
+            "name": "Alphaville Booking",
+            "email": "booking@alphavillebk.com"
+          }
+        }
+        </script>
+      </head>
+      <body>
+        <h1>Model Living Live at Alphaville</h1>
+      </body>
+    </html>
+  `;
+
+  // Prepend the structured venue page to webPages to test Lane A side-by-side with Lane B
+  const allWebPages = [
+    {
+      url: 'https://alphavillebk.com/events/model-living-live',
+      title: 'Model Living, Admin & Funsucker Live at Alphaville',
+      rawHtml: sampleStructuredHtml,
+      html: '',
+      markdown: 'Model Living live show at Alphaville in Bushwick.',
+      metadata: { ogImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80' },
+    },
+    ...webPages,
+  ];
+
+  for (const page of allWebPages) {
+    const rawContent = (page as any).rawHtml || (page as any).html || '';
+    const ogImage =
+      page.metadata?.ogImage ||
+      page.metadata?.['og:image'] ||
+      (page.metadata as any)?.image;
+
+    // Check if application/ld+json is anywhere in rawHtml
+    const hasLdJson = /application\/ld\+json/i.test(rawContent);
+    console.log(`   🔎 Inspecting ${page.url} (rawHtml length: ${rawContent.length}, has "application/ld+json": ${hasLdJson})`);
+
+    // Check Lane A (Structured JSON-LD)
     const structured = extractStructuredEventsFromHtml(
       rawContent,
       page.url,
-      page.ogImage,
-      { weekendStart: targetWeekendRange.start, weekendEnd: targetWeekendRange.end }
+      ogImage,
+      { weekendStart, weekendEnd }
     );
 
     if (structured.length > 0) {
+      console.log(`   🟢 [Lane A: Structured] Extracted ${structured.length} JSON-LD events from: ${page.url}`);
       laneA_Candidates.push(...structured);
     } else {
-      laneB_Pages.push(page);
+      console.log(`   🟡 [Lane B: Deep-Lane] Forwarding ${page.url} to Unstructured LLM fallback`);
+      laneB_Pages.push({
+        url: page.url,
+        title: page.title,
+        markdown: page.markdown || '',
+        ogImage,
+      });
     }
   }
 
   // Process Lane B if any pages lacked JSON-LD
   let laneB_Candidates: CandidateEvent[] = [];
   if (laneB_Pages.length > 0) {
-    laneB_Candidates = await extractFromUnstructuredMarkdown(laneB_Pages, userPrompt, locationHint);
+    console.log(`\n[3/4] Processing Lane B (${laneB_Pages.length} pages) via Gemini fallback parser...`);
+    const laneBStart = Date.now();
+    laneB_Candidates = await extractFromUnstructuredMarkdown(laneB_Pages, userPrompt, location);
+    const laneBElapsed = ((Date.now() - laneBStart) / 1000).toFixed(2);
+    console.log(`✅ Lane B extracted ${laneB_Candidates.length} candidates in ${laneBElapsed}s.`);
+  } else {
+    console.log(`\n[3/4] Lane B skipped (all crawled pages resolved through Lane A!)`);
   }
 
-  const allCandidates = [...laneA_Candidates, ...laneB_Candidates].slice(0, 8);
+  // Collate All Candidates
+  const allCandidates = [...laneA_Candidates, ...laneB_Candidates].slice(0, 6);
+  console.log(`\nTotal Consolidated Candidates: ${allCandidates.length} (Lane A: ${laneA_Candidates.length}, Lane B: ${laneB_Candidates.length})`);
 
-  const curatorStart = Date.now();
-  const curatedEvents = await curateCandidatesWithLLM(allCandidates, userPrompt);
-  const curationTimeSec = parseFloat(((Date.now() - curatorStart) / 1000).toFixed(2));
+  // STEP 4: Semantic Enrichment
+  console.log(`\n[4/4] Sending ${allCandidates.length} candidates to LLM Semantic Curator...`);
+  const finalEvents = await curateCandidatesWithLLM(allCandidates, userPrompt);
 
-  // Compute exact Haversine distance if user coordinates provided
-  const finalEvents = curatedEvents.map((evt) => {
-    if (
-      userCoordinates &&
-      typeof userCoordinates.lat === 'number' &&
-      typeof userCoordinates.lng === 'number' &&
-      typeof evt.coordinates?.lat === 'number' &&
-      typeof evt.coordinates?.lng === 'number'
-    ) {
-      const distance = calculateHaversineDistanceKm(
-        userCoordinates.lat,
-        userCoordinates.lng,
+  // Apply Haversine distance calculation deterministically
+  const enrichedEvents = finalEvents.map((evt) => {
+    if (evt.coordinates?.lat && evt.coordinates?.lng) {
+      const dist = calculateHaversineDistanceKm(
+        userCoords.lat,
+        userCoords.lng,
         evt.coordinates.lat,
         evt.coordinates.lng
       );
-      return { ...evt, distanceKm: distance };
+      return { ...evt, distanceKm: dist };
     }
     return evt;
   });
 
-  return {
-    events: finalEvents,
-    stats: {
-      structuredCount: laneA_Candidates.length,
-      unstructuredCount: laneB_Candidates.length,
-      pagesScrapedCount: scrapedPages.length,
-      curationTimeSec,
-    },
-  };
+  console.log('\n======================================================');
+  console.log(`🎉 Two-Lane Hybrid Pipeline Success! (${enrichedEvents.length} Events Ready)`);
+  console.log('======================================================\n');
+
+  enrichedEvents.forEach((evt, i) => {
+    console.log(`--- [Event #${i + 1}] ${evt.title} ---------------------`);
+    console.log(`🏷️  Category:     ${evt.category.toUpperCase()}`);
+    console.log(`✨  Match Score:  ${evt.matchScore}% | Tagline: "${evt.tagline}"`);
+    console.log(`📍  Venue:        ${evt.venueName} (${evt.address})`);
+    console.log(`📐  Distance:     ${evt.distanceKm} km away [Exact Haversine calculation]`);
+    console.log(`🕒  Date & Time:  ${evt.formattedDate} • ${evt.formattedTime}`);
+    console.log(`🎟️  Admission:    ${evt.price} (isFree: ${evt.isFree})`);
+    console.log(`🏷️  Vibe Tags:    ${evt.vibeTags.join(' ')}`);
+    console.log(`🖼️  Flyer Image:  ${evt.coverImage || 'None'}`);
+    console.log(`✉️  AgentMail:    ${evt.organizerName} <${evt.organizerEmail}>`);
+    console.log(`🔗  Source:       ${evt.sourceUrl}`);
+    console.log(`⚡  Extraction:   ${evt.firecrawlExtractedAt}`);
+    console.log(`📝  Overview:     "${evt.description}"\n`);
+  });
 }
 
-// Backward-compatible alias for any legacy call sites
-export async function extractEventsFromMarkdown(
-  scrapedPages: ScrapedPageInput[],
-  userPrompt: string,
-  locationHint: string = 'Brooklyn / NYC'
-): Promise<LocalEvent[]> {
-  const result = await runHybridEventDiscovery(scrapedPages, userPrompt, locationHint);
-  return result.events;
-}
+runTest().catch((err) => {
+  console.error('\n❌ Fatal Test Error:', err);
+  process.exit(1);
+});

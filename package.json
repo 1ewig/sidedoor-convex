@@ -10,7 +10,8 @@
     "lint:fix": "oxlint --fix",
     "test:firecrawl": "bun run scripts/test-firecrawl.ts",
     "test:ai": "bun run scripts/test-ai-queries.ts",
-    "test:pipeline": "bun run scripts/test-pipeline.ts"
+    "test:pipeline": "bun run scripts/test-pipeline.ts",
+    "test:hybrid": "bun run scripts/test-hybrid-pipeline.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.75",

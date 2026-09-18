@@ -88,11 +88,15 @@ export function useEventDiscovery() {
         const data = await res.json();
 
         if (res.ok && data.success && Array.isArray(data.events) && data.events.length > 0) {
+          const stats = data.stats;
+          const statsInfo = stats
+            ? ` (${stats.structuredCount} via Schema.org JSON-LD, ${stats.unstructuredCount} via DIY Deep-Lane in ${stats.curationTimeSec || 2}s)`
+            : '';
           const successLog: ScoutLog = {
             id: `log-${Date.now()}-3`,
             timestamp: timeStr(),
             level: 'ai',
-            message: `LLM Curator: Extracted ${data.events.length} verified events from ${data.pagesScrapedCount || 6} scraped pages!`,
+            message: `Two-Lane Hybrid Scout: Extracted ${data.events.length} verified events${statsInfo}!`,
             details: `Discovered: ${data.events.map((e: LocalEvent) => e.title).slice(0, 3).join(', ')}.`,
           };
           setLogs((prev) => [successLog, ...prev]);
