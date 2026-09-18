@@ -27,6 +27,7 @@ export function PageClient() {
     filters,
     updateFilters,
     markEventOutreach,
+    triggerScout,
   } = useEventDiscovery();
 
   const {
@@ -49,6 +50,7 @@ export function PageClient() {
 
   const handleTriggerDiscovery = () => {
     setIsFeedOpen(true);
+    triggerScout(filters.query);
     setTimeout(() => {
       const feedElement = document.getElementById('resultsFeed');
       feedElement?.scrollIntoView({ behavior: 'smooth' });

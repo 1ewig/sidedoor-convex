@@ -35,19 +35,33 @@ export function useEventDiscovery() {
       // Min score
       if (event.matchScore < filters.minScore) return false;
 
-      // Search query string (basic client check)
+      // Search query string (smart keyword & vibe token matching)
       if (filters.query.trim()) {
-        const q = filters.query.toLowerCase();
-        const matchesTitle = event.title.toLowerCase().includes(q);
-        const matchesDesc = event.description.toLowerCase().includes(q);
-        const matchesVenue = event.venueName.toLowerCase().includes(q);
-        const matchesTags = event.vibeTags.some((t) => t.toLowerCase().includes(q));
+        const fullPrompt = filters.query.toLowerCase().trim();
+        const stopWords = new Set([
+          'find', 'me', 'the', 'and', 'for', 'with', 'or', 'in', 'of', 'a', 'an', 'to',
+          'this', 'weekend', 'within', 'km', 'near', 'around', 'what', 'kind',
+          'gatherings', 'are', 'you', 'scouting', 'some', 'good', 'any', 'looking'
+        ]);
 
-        // If specific keyword typed that isn't the default prompt
-        if (!q.includes('this weekend') && !q.includes('indie rock shows')) {
-          if (!matchesTitle && !matchesDesc && !matchesVenue && !matchesTags) {
-            return false;
-          }
+        const keywords = fullPrompt
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .split(/\s+/)
+          .filter((w) => w.length > 2 && !stopWords.has(w));
+
+        // If specific keywords exist, check if at least one matches
+        if (keywords.length > 0) {
+          const hasMatch = keywords.some((kw) => {
+            const matchesTitle = event.title.toLowerCase().includes(kw);
+            const matchesTagline = event.tagline.toLowerCase().includes(kw);
+            const matchesDesc = event.description.toLowerCase().includes(kw);
+            const matchesVenue = event.venueName.toLowerCase().includes(kw);
+            const matchesCategory = event.category.toLowerCase().includes(kw);
+            const matchesTags = event.vibeTags.some((t) => t.toLowerCase().includes(kw));
+            return matchesTitle || matchesTagline || matchesDesc || matchesVenue || matchesCategory || matchesTags;
+          });
+
+          if (!hasMatch) return false;
         }
       }
 

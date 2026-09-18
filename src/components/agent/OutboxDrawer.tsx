@@ -96,8 +96,8 @@ export function OutboxDrawer({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {threads.length === 0 ? (
-                <div className="text-center py-12 text-[var(--text-xs)] text-[var(--theme-text-muted)]">
-                  No active outbox inquiries. Request RSVP or details on any gathering to begin.
+                <div className="text-center py-12 text-[var(--text-xs)] text-[var(--theme-text-muted)] font-sans">
+                  No active outbox inquiries. Contact the organizer on any gathering to begin.
                 </div>
               ) : (
                 threads.map((thread) => {
