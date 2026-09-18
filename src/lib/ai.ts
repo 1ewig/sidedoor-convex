@@ -97,9 +97,9 @@ export function getTemporalContext(): {
   // Determine upcoming weekend or current weekend dates
   // 0: Sun, 1: Mon, ..., 5: Fri, 6: Sat
   const day = now.getDay();
-  const daysUntilFriday = (5 - day + 7) % 7;
+  const fridayOffset = day === 6 ? -1 : day === 0 ? -2 : (5 - day + 7) % 7;
   const friday = new Date(now);
-  friday.setDate(now.getDate() + (day === 0 || day === 6 ? 0 : daysUntilFriday));
+  friday.setDate(now.getDate() + fridayOffset);
 
   const saturday = new Date(friday);
   saturday.setDate(friday.getDate() + 1);
