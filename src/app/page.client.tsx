@@ -8,7 +8,6 @@ import { Header } from '@/components/layout/Header';
 import { FloatingDock } from '@/components/discovery/FloatingDock';
 import { DiscoveredFeed } from '@/components/discovery/DiscoveredFeed';
 import { CorrespondenceDrawer } from '@/components/agent/CorrespondenceDrawer';
-import { Footer } from '@/components/layout/Footer';
 import { LocalEvent } from '@/types';
 
 export function PageClient() {
@@ -101,9 +100,6 @@ export function PageClient() {
           onSendAgentMail={handleSendAgentMail}
         />
       </div>
-
-      {/* Footer */}
-      <Footer />
 
       {/* Correspondence Drawer */}
       <CorrespondenceDrawer
