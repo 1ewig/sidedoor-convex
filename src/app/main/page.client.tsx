@@ -10,7 +10,7 @@ import { FloatingDock } from '@/components/discovery/FloatingDock';
 import { DiscoveredFeed } from '@/components/discovery/DiscoveredFeed';
 import { CorrespondenceDrawer } from '@/components/agent/CorrespondenceDrawer';
 import { ScoutFilterDrawer } from '@/components/discovery/ScoutFilterDrawer';
-import { LocationPinModal } from '@/components/map/LocationPinModal';
+import { LocationPinModal } from '@/components/location/LocationPinModal';
 import { LocalEvent } from '@/types';
 
 export function PageClient() {
@@ -118,7 +118,7 @@ export function PageClient() {
 
         {/* Soft Descriptive Subtitle */}
         <p className="text-[var(--text-xs)] text-[var(--theme-text-muted)] max-w-sm mt-6 leading-[var(--leading-relaxed)] font-light">
-          Continuous local crawling via Firecrawl. Vibe-scored by AI. Organizers contacted autonomously via AgentMail.
+          Finding quiet gatherings, matching your taste, reaching out for you.
         </p>
       </main>
 

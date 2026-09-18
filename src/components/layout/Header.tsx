@@ -1,5 +1,5 @@
 import { Mail, SlidersHorizontal } from 'lucide-react';
-import { LocationAnchor } from './LocationAnchor';
+import { LocationAnchor } from '@/components/location/LocationAnchor';
 
 interface HeaderProps {
   onOpenDrawer: () => void;

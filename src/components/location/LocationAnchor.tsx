@@ -61,12 +61,13 @@ export function LocationAnchor({
     <div ref={containerRef} className="relative inline-block shrink-0">
       {/* Trigger Split-Pill */}
       <div
-        className={`inline-flex items-center h-8 sm:h-8.5 rounded-full bg-[var(--theme-bg-surface)]/95 hover:bg-[var(--theme-bg-surface)] border shadow-xs transition-all duration-150 ${error
+        className={`inline-flex items-center h-8 sm:h-8.5 rounded-full bg-[var(--theme-bg-surface)]/95 hover:bg-[var(--theme-bg-surface)] border shadow-xs transition-all duration-150 ${
+          error
             ? 'border-[var(--theme-status-danger)]/60 ring-2 ring-[var(--theme-status-danger)]/15'
             : isOpen
               ? 'border-[var(--theme-brand-accent)] ring-2 ring-[var(--theme-brand-accent)]/20'
               : 'border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)]'
-          }`}
+        }`}
       >
         {/* Main Location Dropdown Toggle */}
         <button
@@ -86,8 +87,9 @@ export function LocationAnchor({
             {locationLabel}
           </span>
           <ChevronDown
-            className={`w-3 h-3 text-[var(--theme-text-muted)] transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-[var(--theme-brand-accent)]' : ''
-              }`}
+            className={`w-3 h-3 text-[var(--theme-text-muted)] transition-transform duration-200 shrink-0 ${
+              isOpen ? 'rotate-180 text-[var(--theme-brand-accent)]' : ''
+            }`}
           />
         </button>
 
