@@ -22,12 +22,12 @@ interface EventDetailModalProps {
 }
 
 const CATEGORY_STYLES: Record<string, string> = {
-  music: 'bg-[var(--theme-status-info)]/10 text-[var(--theme-status-info)] border-[var(--theme-status-info)]/20',
-  art: 'bg-[var(--theme-brand-accent)]/10 text-[var(--theme-brand-accent)] border-[var(--theme-brand-accent)]/20',
-  market: 'bg-[var(--theme-status-warning)]/10 text-[var(--theme-status-warning)] border-[var(--theme-status-warning)]/20',
+  music: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
+  art: 'bg-[var(--theme-text-primary)]/5 text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
+  market: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
   nightlife: 'bg-[var(--theme-text-primary)]/10 text-[var(--theme-text-primary)] border-[var(--theme-text-primary)]/20',
-  food: 'bg-[var(--theme-status-danger)]/10 text-[var(--theme-status-danger)] border-[var(--theme-status-danger)]/20',
-  community: 'bg-[var(--theme-brand-primary)]/10 text-[var(--theme-brand-primary)] border-[var(--theme-brand-primary)]/20',
+  food: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
+  community: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
 };
 
 export function EventDetailModal({
@@ -74,8 +74,8 @@ export function EventDetailModal({
               {event.category}
             </span>
 
-            <span className="inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono text-[var(--theme-brand-accent)] bg-[var(--theme-brand-accent)]/10 px-2 py-0.5 rounded-full font-medium border border-[var(--theme-brand-accent)]/20">
-              <Sparkles className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono text-[var(--theme-text-primary)] bg-[var(--theme-text-primary)]/5 px-2.5 py-0.5 rounded-full font-medium border border-[var(--theme-border-subtle)]">
+              <Sparkles className="w-3 h-3 text-[var(--theme-text-muted)]" />
               {event.matchScore}% Match
             </span>
 
@@ -129,7 +129,7 @@ export function EventDetailModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] text-[var(--text-xs)] font-sans">
             {/* Venue & Street Address */}
             <div className="flex items-start gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] flex items-center justify-center shrink-0 text-[var(--theme-brand-accent)] mt-0.5">
+              <div className="w-7 h-7 rounded-lg bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] flex items-center justify-center shrink-0 text-[var(--theme-text-primary)] mt-0.5">
                 <MapPin className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0">
@@ -217,15 +217,15 @@ export function EventDetailModal({
 
           <div>
             {isSent ? (
-              <span className="inline-flex items-center gap-1.5 px-4 py-2 text-[var(--text-xs)] font-mono text-[var(--theme-brand-accent)] bg-[var(--theme-brand-accent)]/10 border border-[var(--theme-brand-accent)]/20 rounded-full">
-                <Check className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1.5 px-4 py-2 text-[var(--text-xs)] font-mono text-[var(--theme-text-primary)] bg-[var(--theme-text-primary)]/5 border border-[var(--theme-border-subtle)] rounded-full">
+                <Check className="w-3.5 h-3.5 text-[var(--theme-text-primary)]" />
                 Inquired via AgentMail
               </span>
             ) : (
               <button
                 type="button"
                 onClick={() => onSendAgentMail(event)}
-                className="inline-flex items-center gap-2 px-5 py-2 text-[var(--text-xs)] font-medium rounded-full bg-[var(--theme-text-primary)] hover:bg-[var(--theme-brand-accent)] text-[var(--theme-bg-surface)] hover:shadow-xs transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
+                className="inline-flex items-center gap-2 px-5 py-2 text-[var(--text-xs)] font-medium rounded-full bg-[var(--theme-text-primary)] hover:bg-[var(--theme-text-secondary)] text-[var(--theme-bg-surface)] hover:shadow-xs active:scale-[0.98] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
               >
                 <Mail className="w-3.5 h-3.5" />
                 <span>Contact Organizer via AgentMail</span>

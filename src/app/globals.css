@@ -14,12 +14,12 @@
   --theme-text-primary: #191816;        /* Deep ink */
   --theme-text-secondary: #57534E;      /* Secondary stone text */
   --theme-text-muted: #8C887F;          /* Calm muted text & timestamps */
-  --theme-brand-primary: #10b981;       /* Emerald accent */
-  --theme-brand-accent: #059669;        /* Deep emerald */
-  --theme-status-success: #10b981;      /* Emerald status */
-  --theme-status-danger: #ef4444;       /* Rose danger */
-  --theme-status-warning: #f59e0b;      /* Warm amber */
-  --theme-status-info: #0284c7;         /* Info blue */
+  --theme-brand-primary: #191816;       /* Obsidian ink brand */
+  --theme-brand-accent: #2D2B28;        /* Deep warm charcoal */
+  --theme-status-success: #15803d;      /* Muted success */
+  --theme-status-danger: #b91c1c;       /* Muted danger */
+  --theme-status-warning: #b45309;      /* Warm amber */
+  --theme-status-info: #191816;         /* Obsidian ink info */
 
   /* ==========================================================================
      2. SHADOW VARIABLES

@@ -56,8 +56,8 @@ function Toggle({
       aria-label={label}
       aria-checked={checked}
       onClick={onChange}
-      className={`relative w-10 h-6 shrink-0 rounded-full transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--theme-bg-base)] ${
-        checked ? 'bg-[var(--theme-brand-accent)]' : 'bg-[var(--theme-border-strong)]'
+      className={`relative w-10 h-6 shrink-0 rounded-full transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--theme-bg-base)] ${
+        checked ? 'bg-[var(--theme-text-primary)]' : 'bg-[var(--theme-border-strong)]'
       }`}
     >
       <span
@@ -140,7 +140,7 @@ export function ScoutFilterDrawer({
                 type="button"
                 onClick={onClose}
                 aria-label="Close drawer"
-                className="shrink-0 text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] p-2 rounded-lg hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
+                className="shrink-0 text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] p-2 rounded-lg hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -159,7 +159,7 @@ export function ScoutFilterDrawer({
                       <MapPin className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
                       Search Perimeter
                     </span>
-                    <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-brand-accent)] whitespace-nowrap">
+                    <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-primary)] font-medium whitespace-nowrap">
                       {filters.radiusKm} km radius
                     </span>
                   </div>
@@ -172,7 +172,7 @@ export function ScoutFilterDrawer({
                           type="button"
                           onClick={() => onUpdateFilters({ radiusKm: km })}
                           aria-pressed={isSelected}
-                          className={`py-1.5 text-[var(--text-2xs)] font-mono rounded-lg transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] ${
+                          className={`py-1.5 text-[var(--text-2xs)] font-mono rounded-lg transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 ${
                             isSelected
                               ? 'bg-[var(--theme-bg-surface)] text-[var(--theme-text-primary)] shadow-xs font-semibold'
                               : 'text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)]'
@@ -192,7 +192,7 @@ export function ScoutFilterDrawer({
                       <Gauge className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
                       Vibe Match Sensitivity
                     </span>
-                    <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-brand-accent)] whitespace-nowrap">
+                    <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-primary)] font-medium whitespace-nowrap">
                       min {filters.minScore}%
                     </span>
                   </div>
@@ -205,7 +205,7 @@ export function ScoutFilterDrawer({
                           type="button"
                           onClick={() => onUpdateFilters({ minScore: t.value })}
                           aria-pressed={isSelected}
-                          className={`py-1.5 px-1 rounded-lg transition cursor-pointer text-center leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] ${
+                          className={`py-1.5 px-1 rounded-lg transition cursor-pointer text-center leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 ${
                             isSelected
                               ? 'bg-[var(--theme-bg-surface)] text-[var(--theme-text-primary)] shadow-xs'
                               : 'text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)]'
@@ -245,7 +245,7 @@ export function ScoutFilterDrawer({
                             onUpdateFilters({ category: cat.id as EventCategory | 'all' })
                           }
                           aria-pressed={isSelected}
-                          className={`px-3 py-1.5 rounded-full text-[var(--text-2xs)] transition cursor-pointer flex items-center gap-1.5 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] ${
+                          className={`px-3 py-1.5 rounded-full text-[var(--text-2xs)] transition cursor-pointer flex items-center gap-1.5 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 ${
                             isSelected
                               ? 'bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] border-[var(--theme-text-primary)] font-medium'
                               : 'bg-[var(--theme-bg-base)] text-[var(--theme-text-secondary)] border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)]'
@@ -289,7 +289,7 @@ export function ScoutFilterDrawer({
               <button
                 type="button"
                 onClick={onResetDefaults}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[var(--text-xs)] text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[var(--text-xs)] text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset</span>
@@ -298,7 +298,7 @@ export function ScoutFilterDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium hover:opacity-90 transition cursor-pointer text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--theme-bg-surface)]"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--theme-text-primary)] hover:bg-[var(--theme-text-secondary)] text-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium transition cursor-pointer text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--theme-bg-surface)]"
               >
                 Apply &amp; Close
               </button>

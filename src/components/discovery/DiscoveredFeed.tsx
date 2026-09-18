@@ -22,8 +22,8 @@ export function DiscoveredFeed({
           <span className="font-serif text-[var(--text-lg)] text-[var(--theme-text-primary)] font-semibold">
             Discovered Gatherings
           </span>
-          <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)] bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] px-2 py-0.5 rounded-full">
-            {events.length} results
+          <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
+            ({events.length} results)
           </span>
         </div>
         <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)] uppercase tracking-wider">

@@ -32,8 +32,8 @@ export function Header({
           SideDoor
         </span>
         <span
-          className="w-1.5 h-1.5 rounded-full bg-[var(--theme-brand-primary)] animate-pulse"
-          title="Firecrawl active"
+          className="w-1.5 h-1.5 rounded-full bg-[var(--theme-text-primary)] animate-pulse"
+          title="Scout active"
         />
       </div>
 
@@ -52,9 +52,9 @@ export function Header({
         <button
           type="button"
           onClick={onOpenFilterDrawer}
-          className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--theme-bg-surface)]/80 hover:bg-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] hover:border-[var(--theme-border-strong)] hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all duration-150 border border-[var(--theme-border-subtle)] shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
+          className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--theme-bg-surface)]/80 hover:bg-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] hover:border-[var(--theme-border-strong)] hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all duration-150 border border-[var(--theme-border-subtle)] shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
         >
-          <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--theme-text-muted)] group-hover:text-[var(--theme-brand-accent)] transition-colors" />
+          <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--theme-text-muted)] group-hover:text-[var(--theme-text-primary)] transition-colors" />
           <span className="hidden sm:inline">Tuning</span>
         </button>
 
@@ -62,12 +62,12 @@ export function Header({
         <button
           type="button"
           onClick={onOpenDrawer}
-          className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--theme-bg-surface)]/80 hover:bg-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] hover:border-[var(--theme-border-strong)] hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all duration-150 border border-[var(--theme-border-subtle)] shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
+          className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--theme-bg-surface)]/80 hover:bg-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] hover:border-[var(--theme-border-strong)] hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all duration-150 border border-[var(--theme-border-subtle)] shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
         >
-          <Mail className="w-3.5 h-3.5 text-[var(--theme-text-muted)] group-hover:text-[var(--theme-brand-accent)] transition-colors" />
+          <Mail className="w-3.5 h-3.5 text-[var(--theme-text-muted)] group-hover:text-[var(--theme-text-primary)] transition-colors" />
           <span className="hidden sm:inline">Outbox</span>
           {unreadCount > 0 && (
-            <span className="w-4 h-4 rounded-full bg-[var(--theme-text-primary)] group-hover:bg-[var(--theme-brand-accent)] text-[var(--theme-bg-surface)] font-mono text-[var(--text-2xs)] flex items-center justify-center transition-colors">
+            <span className="w-4 h-4 rounded-full bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] font-mono text-[var(--text-2xs)] flex items-center justify-center transition-colors">
               {unreadCount}
             </span>
           )}

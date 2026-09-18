@@ -86,7 +86,7 @@ export function OutboxDrawer({
                   type="button"
                   onClick={onClose}
                   aria-label="Close drawer"
-                  className="text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] text-[var(--text-sm)] p-1.5 rounded-lg hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
+                  className="text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] text-[var(--text-sm)] p-1.5 rounded-lg hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -123,7 +123,7 @@ export function OutboxDrawer({
                       </p>
 
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-[var(--text-2xs)] text-[var(--theme-brand-accent)] font-semibold uppercase tracking-wider font-mono">
+                        <span className="text-[var(--text-2xs)] text-[var(--theme-text-primary)] font-semibold uppercase tracking-wider font-mono">
                           {thread.status === 'responded' ? '✓ Confirmed' : 'Dispatched'}
                         </span>
 
@@ -146,12 +146,12 @@ export function OutboxDrawer({
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleSend(thread.id);
                             }}
-                            className="flex-1 text-[var(--text-xs)] bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] rounded-lg px-2.5 py-1.5 text-[var(--theme-text-primary)] focus:outline-none focus:border-[var(--theme-brand-accent)]"
+                            className="flex-1 text-[var(--text-xs)] bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] rounded-lg px-2.5 py-1.5 text-[var(--theme-text-primary)] focus:outline-none focus:border-[var(--theme-text-primary)]"
                           />
                           <button
                             type="button"
                             onClick={() => handleSend(thread.id)}
-                            className="p-1.5 rounded-lg bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] hover:opacity-90 transition cursor-pointer"
+                            className="p-1.5 rounded-lg bg-[var(--theme-text-primary)] hover:bg-[var(--theme-text-secondary)] text-[var(--theme-bg-surface)] active:scale-[0.98] transition cursor-pointer"
                           >
                             <Send className="w-3.5 h-3.5" />
                           </button>
