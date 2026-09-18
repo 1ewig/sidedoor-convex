@@ -1,36 +1,31 @@
 import type { Metadata } from 'next';
-import { Newsreader, Geist, Geist_Mono } from 'next/font/google';
+import { Instrument_Serif, Inter } from 'next/font/google';
 import './globals.css';
 
-const editorialSerif = Newsreader({
-  variable: '--font-editorial',
+const instrumentSerif = Instrument_Serif({
+  variable: '--font-serif',
   subsets: ['latin'],
   style: ['normal', 'italic'],
-  weight: ['400', '500', '600'],
+  weight: ['400'],
 });
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const inter = Inter({
+  variable: '--font-sans',
   subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: 'SideDoor — Local Event Discovery & AgentMail',
-  description: 'An autonomous scout discovering indie rock, independent print markets, and small-door art openings.',
+  title: 'SideDoor — Hyper-Local Scout',
+  description: 'Local gatherings curated in silence. Continuous local crawling via Firecrawl and AgentMail.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="en"
-      className={`${editorialSerif.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${instrumentSerif.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#fafaf9] text-[#1c1917] selection:bg-stone-200 selection:text-stone-900 font-sans">
+      <body className="bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] font-sans antialiased min-h-screen relative flex flex-col justify-between overflow-x-hidden selection:bg-[var(--theme-text-primary)] selection:text-white">
         {children}
       </body>
     </html>

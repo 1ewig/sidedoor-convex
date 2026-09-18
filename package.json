@@ -7,9 +7,12 @@
     "build": "bun --bun next build --turbopack",
     "start": "bun --bun next start",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "test:firecrawl": "bun run scripts/test-firecrawl.ts"
   },
   "dependencies": {
+    "@mendable/firecrawl-js": "^4.40.0",
+    "dotenv": "^18.0.0",
     "lucide-react": "^1.47.0",
     "next": "16.3.5",
     "react": "19.2.8",
