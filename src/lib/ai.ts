@@ -47,6 +47,10 @@ export const RawExtractedEventSchema = z.object({
   organizerName: z.string().describe('Host, curator, or venue booking contact name'),
   organizerEmail: z.string().describe('Organizer or venue contact email for AgentMail outreach (e.g. booking@venue.org)'),
   sourceUrl: z.string().describe('URL where this event was discovered'),
+  coverImage: z
+    .string()
+    .optional()
+    .describe('Direct URL of the event photo, flyer, or venue picture found in markdown images or links (e.g. https://.../flyer.jpg)'),
 });
 
 export const ExtractedEventsListSchema = z.object({
@@ -162,6 +166,7 @@ Instructions:
     organizerEmail: evt.organizerEmail,
     sourceUrl: evt.sourceUrl,
     firecrawlExtractedAt: 'Just now',
+    coverImage: evt.coverImage,
     outreachStatus: 'none',
   }));
 }

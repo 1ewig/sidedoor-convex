@@ -78,6 +78,7 @@ async function main() {
     console.log(`✨ Score:      ${evt.matchScore}% Vibe Match`);
     console.log(`🏷️ Tags:       ${evt.vibeTags.join(' ')}`);
     console.log(`✉️ Organizer:  ${evt.organizerName} <${evt.organizerEmail}>`);
+    console.log(`🖼️ Photo:      ${evt.coverImage || '(None extracted)'}`);
     console.log(`📝 Tagline:    "${evt.tagline}"`);
     console.log(`📖 Overview:   "${evt.description}"\n`);
   });

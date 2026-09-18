@@ -52,10 +52,29 @@ async function main() {
       const snippet = markdown.slice(0, 240).replace(/\n+/g, ' ');
       if (snippet) {
         console.log(`📄 Markdown:    "${snippet}..."`);
-        console.log(`📊 Length:      ${markdown.length} characters\n`);
+        console.log(`📊 Length:      ${markdown.length} characters`);
       } else {
-        console.log(`📄 Markdown:    (No markdown stream)\n`);
+        console.log(`📄 Markdown:    (No markdown stream)`);
       }
+
+      // Check for images in metadata and markdown
+      const ogImage = item.metadata?.ogImage || item.metadata?.['og:image'];
+      const markdownImages = Array.from(
+        markdown.matchAll(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/g),
+        (m: any) => m[1]
+      );
+      const foundImages = [
+        ...(ogImage ? [ogImage] : []),
+        ...markdownImages.slice(0, 3),
+      ];
+
+      if (foundImages.length > 0) {
+        console.log(`🖼️ Photos Found (${foundImages.length}):`);
+        foundImages.slice(0, 3).forEach((img: string) => console.log(`   • ${img}`));
+      } else {
+        console.log(`🖼️ Photos Found: None`);
+      }
+      console.log('');
     });
 
     // 2. Direct Scrape Test
