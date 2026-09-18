@@ -130,3 +130,70 @@ body {
   background: var(--theme-border-strong);
   border-radius: 9999px;
 }
+
+/* ==========================================================================
+   Ambient Dynamic Background Animations
+   ========================================================================== */
+@keyframes shadow-breeze {
+  0%, 100% {
+    transform: rotate(12deg) translate3d(0, 0, 0) scale(1.1);
+  }
+  33% {
+    transform: rotate(14.5deg) translate3d(-12px, 8px, 0) scale(1.12);
+  }
+  66% {
+    transform: rotate(9.5deg) translate3d(14px, -6px, 0) scale(1.08);
+  }
+}
+
+@keyframes ambient-breathe {
+  0%, 100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.34;
+  }
+}
+
+@keyframes orb-wander-1 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-30px, 40px, 0) scale(1.15);
+  }
+}
+
+@keyframes orb-wander-2 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(40px, -25px, 0) scale(1.1);
+  }
+}
+
+.animate-shadow-breeze {
+  animation: shadow-breeze 22s ease-in-out infinite alternate;
+}
+
+.animate-ambient-breathe {
+  animation: ambient-breathe 16s ease-in-out infinite alternate;
+}
+
+.animate-orb-1 {
+  animation: orb-wander-1 28s ease-in-out infinite alternate;
+}
+
+.animate-orb-2 {
+  animation: orb-wander-2 34s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shadow-breeze,
+  .animate-ambient-breathe,
+  .animate-orb-1,
+  .animate-orb-2 {
+    animation: none !important;
+  }
+}
