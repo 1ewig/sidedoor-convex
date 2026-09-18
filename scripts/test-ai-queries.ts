@@ -8,7 +8,7 @@ dotenv.config({ path: resolve(process.cwd(), '.env') });
 
 async function main() {
   console.log('\n======================================================');
-  console.log('   🤖 SideDoor — Vercel AI SDK + Google Gemini Test');
+  console.log('   🤖 SideDoor — Gemini High-Reasoning Scout Test');
   console.log('======================================================\n');
 
   const apiKey =
@@ -32,7 +32,8 @@ async function main() {
   const location = process.argv[3] || 'Brooklyn / New York City';
 
   console.log(`💬 User Prompt: "${prompt}"`);
-  console.log(`📍 Location:    "${location}"\n`);
+  console.log(`📍 Location:    "${location}"`);
+  console.log(`🧠 Reasoning:   HIGH (Extended CoT Thinking Enabled)\n`);
   console.log(`⏳ Generating 3 targeted Firecrawl search queries with Gemini 3.5 Flash Lite...`);
 
   const startTime = Date.now();
@@ -41,7 +42,30 @@ async function main() {
     const result = await generateDiscoveryQueries(prompt, location);
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
 
+    // Token usage telemetry
+    const usage = result.usage;
+    const rawUsage = usage?.raw || {};
+    const thoughtsTokens =
+      usage?.outputTokens?.reasoning ??
+      rawUsage.thoughtsTokenCount ??
+      0;
+    const textTokens =
+      usage?.outputTokens?.text ??
+      rawUsage.candidatesTokenCount ??
+      usage?.completionTokens ??
+      0;
+    const promptTokens =
+      usage?.inputTokens?.total ??
+      rawUsage.promptTokenCount ??
+      usage?.promptTokens ??
+      0;
+    const totalTokens =
+      rawUsage.totalTokenCount ??
+      usage?.totalTokens ??
+      (promptTokens + textTokens + thoughtsTokens);
+
     console.log(`\n✅ Generated in ${elapsed}s!\n`);
+
     console.log('📋 3 Firecrawl Queries:');
     result.queries.forEach((q, i) => {
       console.log(`   ${i + 1}. "${q}"`);
@@ -50,11 +74,17 @@ async function main() {
     console.log('\n🏷️ Vibe Tags:');
     console.log(`   ${result.vibeTags.join('  ')}`);
 
-    console.log('\n🧠 Planner Rationale:');
+    console.log('\n💡 Planner Rationale:');
     console.log(`   ${result.reasoning}`);
 
+    console.log('\n📊 Token & Reasoning Telemetry:');
+    console.log(`   • Reasoning / Thought Tokens: ${thoughtsTokens}`);
+    console.log(`   • Input / Prompt Tokens:      ${promptTokens}`);
+    console.log(`   • Output / Candidate Tokens:   ${textTokens}`);
+    console.log(`   • Total Tokens Consumed:      ${totalTokens}`);
+
     console.log('\n======================================================');
-    console.log('🎉 LLM Query Generation Succeeded!');
+    console.log('🎉 LLM Query Generation Succeeded with High Reasoning!');
     console.log('======================================================\n');
   } catch (err: any) {
     console.error('\n❌ AI Query Generation Failed:', err.message || err);

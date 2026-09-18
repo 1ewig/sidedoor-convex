@@ -19,7 +19,16 @@ export const DiscoveryQueriesSchema = z.object({
     .describe('3-5 aesthetic and category tags extracted from the prompt (e.g. #IndieRock, #NightMarket, #Vernissage)'),
 });
 
-export type DiscoveryQueriesResult = z.infer<typeof DiscoveryQueriesSchema>;
+export type DiscoveryQueriesResult = z.infer<typeof DiscoveryQueriesSchema> & {
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    inputTokens?: any;
+    outputTokens?: any;
+    raw?: any;
+  };
+};
 
 // ==============================================================================
 // 2. STEP 3 SCHEMA: Scraped Markdown -> Structured UI LocalEvent[]
@@ -62,7 +71,10 @@ export const ExtractedEventsListSchema = z.object({
  */
 export async function generateDiscoveryQueries(
   userPrompt: string,
-  locationHint: string = 'Brooklyn / NYC'
+  locationHint: string = 'Brooklyn / NYC',
+  options?: {
+    thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
+  }
 ): Promise<DiscoveryQueriesResult> {
   const apiKey =
     process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
@@ -87,14 +99,26 @@ Rules:
 - Include location context ("${locationHint}") and timeframe ("this weekend").
 - Output exactly 3 queries.`;
 
+  const thinkingLevel = options?.thinkingLevel ?? 'high';
+
   const result = await generateObject({
     model: google('gemini-3.5-flash-lite'),
     schema: DiscoveryQueriesSchema,
     system: systemPrompt,
     prompt: `User Request: "${userPrompt}"\nLocation Context: "${locationHint}"`,
+    providerOptions: {
+      google: {
+        thinkingConfig: {
+          thinkingLevel,
+        },
+      },
+    },
   });
 
-  return result.object;
+  return {
+    ...result.object,
+    usage: result.usage,
+  };
 }
 
 /**
@@ -104,7 +128,10 @@ Rules:
 export async function extractEventsFromMarkdown(
   scrapedPages: { url: string; title?: string; markdown: string }[],
   userPrompt: string,
-  locationHint: string = 'Brooklyn / NYC'
+  locationHint: string = 'Brooklyn / NYC',
+  options?: {
+    thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
+  }
 ): Promise<LocalEvent[]> {
   const apiKey =
     process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
@@ -137,11 +164,20 @@ Instructions:
 4. If a venue contact email is not explicitly written, generate a realistic booking/organizer email (e.g. booking@<venuedomain> or info@<venuedomain>) so AgentMail can reach out.
 5. Provide a punchy tagline and 2-3 sentence overview.`;
 
+  const thinkingLevel = options?.thinkingLevel ?? 'high';
+
   const result = await generateObject({
     model: google('gemini-3.5-flash-lite'),
     schema: ExtractedEventsListSchema,
     system: systemPrompt,
     prompt: `User Request: "${userPrompt}"\n\nScraped Markdown Data:\n${combinedMarkdown}`,
+    providerOptions: {
+      google: {
+        thinkingConfig: {
+          thinkingLevel,
+        },
+      },
+    },
   });
 
   // Map to full typed LocalEvent objects
