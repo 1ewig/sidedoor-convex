@@ -69,60 +69,42 @@ export function LocationAnchor({
 
   return (
     <div ref={containerRef} className="relative inline-block shrink-0">
-      {/* Trigger Split-Pill */}
-      <div
-        className={`inline-flex items-center h-8 sm:h-8.5 rounded-full bg-[var(--theme-bg-surface)]/95 hover:bg-[var(--theme-bg-surface)] border shadow-xs transition-all duration-150 ${error
+      {/* Location Anchor Trigger Pill */}
+      <button
+        ref={triggerButtonRef}
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        aria-controls="location-anchor-popover"
+        title={`Current anchor: ${locationLabel}.${error ? ` Note: ${error}.` : ''} Click to change.`}
+        className={`group inline-flex items-center gap-1.5 h-8 sm:h-8.5 px-3 rounded-full bg-[var(--theme-bg-surface)]/80 hover:bg-[var(--theme-bg-surface)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] transition-all duration-150 border shadow-xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] ${
+          error
             ? 'border-[var(--theme-status-danger)]/60 ring-2 ring-[var(--theme-status-danger)]/15'
             : isOpen
               ? 'border-[var(--theme-brand-accent)] ring-2 ring-[var(--theme-brand-accent)]/20'
               : 'border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)]'
-          }`}
+        }`}
       >
-        {/* Main Location Dropdown Toggle */}
-        <button
-          ref={triggerButtonRef}
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          aria-expanded={isOpen}
-          aria-haspopup="dialog"
-          aria-controls="location-anchor-popover"
-          title={`Current anchor: ${locationLabel}.${error ? ` Note: ${error}.` : ''} Click to change.`}
-          className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] hover:text-[var(--theme-brand-accent)] transition-colors cursor-pointer rounded-l-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] select-none"
+        <MapPin
+          className={`w-3.5 h-3.5 shrink-0 transition-colors duration-150 ${
+            isOpen
+              ? 'text-[var(--theme-brand-accent)]'
+              : 'text-[var(--theme-text-muted)] group-hover:text-[var(--theme-brand-accent)]'
+          }`}
+        />
+        <span
+          suppressHydrationWarning
+          className="max-w-[140px] xs:max-w-[180px] sm:max-w-[220px] truncate font-sans text-left leading-none"
         >
-          <MapPin className="w-3.5 h-3.5 text-[var(--theme-brand-accent)] shrink-0" />
-          <span
-            suppressHydrationWarning
-            className="max-w-[120px] xs:max-w-[150px] sm:max-w-[190px] truncate font-sans text-left leading-none"
-          >
-            {locationLabel}
-          </span>
-          <ChevronDown
-            className={`w-3 h-3 text-[var(--theme-text-muted)] transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-[var(--theme-brand-accent)]' : ''
-              }`}
-          />
-        </button>
-
-        {/* Clean Inset Divider */}
-        <div className="w-px h-3.5 bg-[var(--theme-border-subtle)] shrink-0" aria-hidden="true" />
-
-        {/* Dedicated "Locate Me" Quick GPS Action */}
-        <button
-          type="button"
-          onClick={onLocateMe}
-          disabled={isLoading}
-          title={error ? `Location detection error: ${error}. Click to retry.` : 'Detect my current location (GPS / IP)'}
-          aria-label={error ? `Location error: ${error}. Click to retry.` : 'Detect my current location via GPS or IP'}
-          className="flex items-center justify-center w-8 h-full px-2 text-[var(--theme-text-muted)] hover:text-[var(--theme-brand-accent)] disabled:opacity-40 transition-colors cursor-pointer rounded-r-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)] shrink-0"
-        >
-          {isLoading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--theme-brand-accent)]" />
-          ) : error ? (
-            <AlertCircle className="w-3.5 h-3.5 text-[var(--theme-status-danger)]" />
-          ) : (
-            <Navigation className="w-3.5 h-3.5" />
-          )}
-        </button>
-      </div>
+          {locationLabel}
+        </span>
+        <ChevronDown
+          className={`w-3 h-3 text-[var(--theme-text-muted)] group-hover:text-[var(--theme-brand-accent)] transition-all duration-200 shrink-0 ${
+            isOpen ? 'rotate-180 text-[var(--theme-brand-accent)]' : ''
+          }`}
+        />
+      </button>
 
       {/* Popover Dropdown with Framer Motion Animation */}
       <AnimatePresence>

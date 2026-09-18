@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send } from 'lucide-react';
+import { X, Send, Mail } from 'lucide-react';
 import { EmailThread } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
 
@@ -64,26 +64,33 @@ export function OutboxDrawer({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-y-0 right-0 w-full max-w-sm bg-[var(--theme-bg-surface)] border-l border-[var(--theme-border-subtle)] shadow-2xl z-50 flex flex-col"
+            className="fixed inset-y-0 right-0 w-full max-w-md sm:max-w-lg bg-[var(--theme-bg-surface)] border-l border-[var(--theme-border-subtle)] shadow-2xl z-50 flex flex-col"
           >
             {/* Header */}
-            <div className="p-6 border-b border-[var(--theme-border-subtle)] flex items-center justify-between">
-              <div>
-                <h3 className="font-serif text-[var(--text-xl)] text-[var(--theme-text-primary)]">
-                  Outbox
-                </h3>
-                <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans">
-                  Agent responses &amp; confirmations
-                </p>
+            <div className="p-6 border-b border-[var(--theme-border-subtle)] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 shrink-0 rounded-full bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] flex items-center justify-center text-[var(--theme-text-primary)]">
+                  <Mail className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-serif text-[var(--text-xl)] text-[var(--theme-text-primary)] leading-tight truncate">
+                    Outbox
+                  </h3>
+                  <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans mt-0.5">
+                    Agent responses &amp; confirmations
+                  </p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close drawer"
-                className="text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] text-[var(--text-sm)] p-1.5 rounded-lg hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Close drawer"
+                  className="text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] text-[var(--text-sm)] p-1.5 rounded-lg hover:bg-[var(--theme-bg-base)] transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-brand-accent)]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
