@@ -27,6 +27,7 @@ export function PageClient() {
   const {
     events,
     filters,
+    isScouting,
     updateFilters,
     markEventOutreach,
     triggerScout,
@@ -36,6 +37,7 @@ export function PageClient() {
     threads,
     unreadCount,
     sendEventInquiry,
+    replyToThread,
   } = useAgentMail();
 
   const {
@@ -66,19 +68,8 @@ export function PageClient() {
     setIsDrawerOpen(true);
   };
 
-  const handleSendMessage = (_threadId: string, text: string) => {
-    const activeThread = threads[0];
-    if (!activeThread) return;
-
-    activeThread.messages.push({
-      id: `msg-${Date.now()}`,
-      sender: 'agent',
-      senderName: 'You (via SideDoor)',
-      senderEmail: 'scout-alpha@sidedoor.agentmail.to',
-      subject: activeThread.subject,
-      body: text,
-      sentAt: 'Just now',
-    });
+  const handleSendMessage = (threadId: string, text: string) => {
+    replyToThread(threadId, text);
   };
 
   return (
@@ -114,6 +105,7 @@ export function PageClient() {
         {/* Floating Dock */}
         <FloatingDock
           prompt={filters.query}
+          isScouting={isScouting}
           onPromptChange={(val) => updateFilters({ query: val })}
           onTriggerDiscovery={handleTriggerDiscovery}
         />
@@ -129,6 +121,7 @@ export function PageClient() {
         <DiscoveredFeed
           events={events}
           isOpen={isFeedOpen}
+          isScouting={isScouting}
           onSelectEvent={(event) => setSelectedEvent(event)}
         />
       </div>

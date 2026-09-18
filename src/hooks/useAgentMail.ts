@@ -2,11 +2,10 @@
 
 import { useState, useCallback } from 'react';
 import { EmailThread, EmailMessage, LocalEvent } from '@/types';
-import { INITIAL_THREADS } from '@/lib/mockData';
 
 export function useAgentMail() {
-  const [threads, setThreads] = useState<EmailThread[]>(INITIAL_THREADS);
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(INITIAL_THREADS[0]?.id || null);
+  const [threads, setThreads] = useState<EmailThread[]>([]);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isMailModalOpen, setIsMailModalOpen] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
 
@@ -99,6 +98,30 @@ export function useAgentMail() {
     [threads]
   );
 
+  const replyToThread = useCallback((threadId: string, text: string) => {
+    const newMsg: EmailMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'agent',
+      senderName: 'You (via SideDoor)',
+      senderEmail: 'scout-alpha@sidedoor.agentmail.to',
+      subject: 'Re: Inquiry',
+      body: text,
+      sentAt: 'Just now',
+    };
+
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === threadId
+          ? {
+              ...t,
+              lastMessageAt: 'Just now',
+              messages: [...t.messages, newMsg],
+            }
+          : t
+      )
+    );
+  }, []);
+
   return {
     threads,
     selectedThread,
@@ -109,5 +132,6 @@ export function useAgentMail() {
     isSending,
     unreadCount,
     sendEventInquiry,
+    replyToThread,
   };
 }
