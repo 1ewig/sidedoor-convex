@@ -51,6 +51,25 @@ export function useEventDiscovery() {
 
       const promptText = (customPrompt || filters.query || 'indie gigs, night fleas, or art vernissages').trim();
       const timeStr = () => new Date().toLocaleTimeString('en-US', { hour12: false });
+      const clientStartTime = performance.now();
+
+      const effectiveLocation =
+        locationLabel && locationLabel !== 'Detecting location...'
+          ? locationLabel
+          : 'Brooklyn / New York City';
+
+      console.groupCollapsed(
+        `%c🚦 [SideDoor Scout] Scouting: "${promptText}"`,
+        'color: #d97706; font-weight: bold; font-size: 13px;'
+      );
+      console.log('📍 Location:', effectiveLocation);
+      console.log('🌐 User Coordinates:', userCoordinates ?? 'Default (NYC fallback)');
+      console.log('⚙️ Current Active Filters:', {
+        radiusKm: `${filters.radiusKm} km`,
+        minScore: `${filters.minScore}%`,
+        category: filters.category,
+        onlyFree: filters.onlyFree,
+      });
 
       // Step 1: Query generation notice
       const startLog: ScoutLog = {
@@ -71,10 +90,7 @@ export function useEventDiscovery() {
         };
         setLogs((prev) => [crawlLog, ...prev]);
 
-        const effectiveLocation =
-          locationLabel && locationLabel !== 'Detecting location...'
-            ? locationLabel
-            : undefined;
+        console.log('🚀 Dispatching request to /api/scout...');
 
         const res = await fetch('/api/scout', {
           method: 'POST',
@@ -87,12 +103,63 @@ export function useEventDiscovery() {
         });
 
         const data = await res.json();
+        const clientDuration = ((performance.now() - clientStartTime) / 1000).toFixed(2);
+
+        console.log(`📦 Received response (${res.status}) in ${clientDuration}s:`, data);
+
+        if (data.queries && Array.isArray(data.queries)) {
+          console.log('🔍 Generated Search Angles:');
+          data.queries.forEach((q: string, i: number) => console.log(`   ${i + 1}. ${q}`));
+        }
+
+        if (data.vibeTags && Array.isArray(data.vibeTags)) {
+          console.log('🏷️ Extracted Vibe Tags:', data.vibeTags.join(', '));
+        }
+
+        if (data.stats) {
+          console.log('📊 Pipeline Telemetry:', {
+            'Scraped Pages': data.pagesScrapedCount,
+            'Fast Lane (JSON-LD)': data.stats.structuredCount,
+            'Fallback Lane (Deep AI)': data.stats.unstructuredCount,
+            'Curator Time (sec)': `${data.stats.curationTimeSec}s`,
+            'Total Discovered': data.events?.length ?? 0,
+          });
+        }
 
         if (res.ok && data.success && Array.isArray(data.events) && data.events.length > 0) {
           const stats = data.stats as HybridDiscoveryStats | undefined;
           if (stats) {
             setHybridStats(stats);
           }
+
+          console.table(
+            data.events.map((e: LocalEvent) => ({
+              Title: e.title,
+              Category: e.category,
+              'Match %': `${e.matchScore}%`,
+              Distance: `${e.distanceKm ?? 'N/A'} km`,
+              Price: e.price,
+              Venue: e.venueName,
+              Date: `${e.formattedDate} ${e.formattedTime}`,
+              Source: e.sourceUrl,
+            }))
+          );
+
+          // Evaluation against active filters
+          const passingEvents = data.events.filter((event: LocalEvent) => {
+            if (event.distanceKm > filters.radiusKm) return false;
+            if (filters.category !== 'all' && event.category !== filters.category) return false;
+            if (filters.onlyFree && !event.isFree) return false;
+            if (event.matchScore < filters.minScore) return false;
+            return true;
+          });
+
+          console.log(
+            `🎯 Filter Result: %c${passingEvents.length} of ${data.events.length} events%c visible under current filter drawer settings.`,
+            'color: #10b981; font-weight: bold;',
+            'color: inherit;'
+          );
+
           const successLog: ScoutLog = {
             id: `log-${Date.now()}-3`,
             timestamp: timeStr(),
@@ -112,11 +179,13 @@ export function useEventDiscovery() {
           if (data.events[0]) {
             setSelectedEventId(data.events[0].id);
           }
+          console.groupEnd();
           return;
         }
 
         // If no events found or API warned
         const warnMessage = data.error || data.message || 'No live gatherings found for this query.';
+        console.warn('⚠️ Scout Warning:', warnMessage);
         const warnLog: ScoutLog = {
           id: `log-${Date.now()}-warn`,
           timestamp: timeStr(),
@@ -124,7 +193,9 @@ export function useEventDiscovery() {
           message: `Scout report: ${warnMessage}`,
         };
         setLogs((prev) => [warnLog, ...prev]);
+        console.groupEnd();
       } catch (err: any) {
+        console.error('❌ Scout Pipeline Error:', err);
         const errLog: ScoutLog = {
           id: `log-${Date.now()}-err`,
           timestamp: timeStr(),
@@ -132,11 +203,12 @@ export function useEventDiscovery() {
           message: `Scout pipeline connection error: ${err?.message || 'Network error'}`,
         };
         setLogs((prev) => [errLog, ...prev]);
+        console.groupEnd();
       } finally {
         setIsScouting(false);
       }
     },
-    [filters.query, isScouting, locationLabel, userCoordinates]
+    [filters, isScouting, locationLabel, userCoordinates]
   );
 
   const markEventOutreach = useCallback((eventId: string) => {
