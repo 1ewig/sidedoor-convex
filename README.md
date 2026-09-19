@@ -36,12 +36,13 @@ src/
 │   ├── location/               # Location picker & MapLibre GL
 │   │   ├── LocationAnchor.tsx  # Interactive location pill & scouting base popover
 │   │   └── LocationPinModal.tsx# MapLibre GL interactive pin & radius selector
-│   ├── discovery/              # Core discovery features
+│   ├── discovery/              # Core in-page discovery features
 │   │   ├── FloatingDock.tsx    # Natural language scout prompt input
 │   │   ├── DiscoveredFeed.tsx  # Feed container for scouted gatherings
 │   │   ├── EventCard.tsx       # Modular event card (schema renderer)
-│   │   └── ScoutFilterDrawer.tsx # Search radius, categories, & vibe tuning
-│   └── agent/                  # AgentMail correspondence
+│   │   └── EventDetailModal.tsx# Focused event dossier modal
+│   └── drawers/                # Slide-over overlay panels
+│       ├── ScoutFilterDrawer.tsx # Search radius, categories, & vibe tuning
 │       └── OutboxDrawer.tsx    # Two-way email outbox with venue organizers
 ├── hooks/                      # Business logic & side effects
 │   ├── useEventDiscovery.ts    # Filter & scout simulation logic
