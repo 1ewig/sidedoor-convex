@@ -51,16 +51,21 @@ src/
 │   ├── useScoutFilterStore.ts  # Tuning filters (radius, category, minScore)
 │   └── useLocationStore.ts     # Active user coordinates & locality label
 ├── types/                      # Shared TypeScript definitions
-│   └── index.ts                # LocalEvent, Coordinates, EmailThread, etc.
-└── lib/                        # Pure utilities & AI integrations
-    ├── ai.ts                   # 3-Step Gemini 3.5 Flash Lite query & extraction
-    ├── mockData.ts             # Initial curated gatherings & outbox threads
+│   ├── index.ts                # LocalEvent, Coordinates, EmailThread, etc.
+│   └── discovery.ts            # CandidateEvent, ScrapedPageInput, HybridDiscoveryResult
+└── lib/                        # Pure utilities & discovery pipeline
+    ├── discovery/              # Two-lane discovery modules (planner, deep-lane, curator, pipeline)
+    ├── schema-org.ts           # Lane A deterministic JSON-LD extractor
+    ├── temporal.ts             # Deterministic date anchoring
+    ├── html.ts                 # Pure HTML entity cleaning
+    ├── geo.ts                  # Haversine distance calculator
     ├── animations.ts           # Framer motion presets
     └── mapStyle.ts             # MapLibre cartographic styling
-scripts/                        # Integration & verification test suites
+scripts/                        # Verification test suites
 ├── test-firecrawl.ts           # Web search, scrape & direct photo test
 ├── test-ai-queries.ts          # Step 1 Gemini intent expansion test
-└── test-pipeline.ts            # Full 3-step end-to-end extraction test
+├── test-pipeline.ts            # Full 3-step end-to-end extraction test
+└── test-hybrid-pipeline.ts     # Two-lane hybrid scraping pipeline harness
 ```
 
 ---
