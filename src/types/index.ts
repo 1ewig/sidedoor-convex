@@ -74,3 +74,12 @@ export interface UserLocation {
   label: string;
   coordinates: Coordinates;
 }
+
+export interface HybridDiscoveryStats {
+  structuredCount: number;
+  unstructuredCount: number;
+  pagesScrapedCount: number;
+  curationTimeSec?: number;
+}
+
+export * from './discovery';

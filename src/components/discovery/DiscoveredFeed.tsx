@@ -1,11 +1,12 @@
-import { Loader2 } from 'lucide-react';
-import { LocalEvent } from '@/types';
+import { Loader2, Zap } from 'lucide-react';
+import { LocalEvent, HybridDiscoveryStats } from '@/types';
 import { EventCard } from './EventCard';
 
 interface DiscoveredFeedProps {
   events: LocalEvent[];
   isOpen: boolean;
   isScouting?: boolean;
+  hybridStats?: HybridDiscoveryStats | null;
   onSelectEvent: (event: LocalEvent) => void;
 }
 
@@ -13,6 +14,7 @@ export function DiscoveredFeed({
   events,
   isOpen,
   isScouting = false,
+  hybridStats,
   onSelectEvent,
 }: DiscoveredFeedProps) {
   if (!isOpen) return null;
@@ -21,7 +23,7 @@ export function DiscoveredFeed({
     <section className="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 pb-20 transition-all duration-500 animate-in fade-in slide-in-from-top-4">
       {/* Header bar */}
       <div className="pt-6 flex items-center justify-between border-b border-[var(--theme-border-subtle)] pb-3.5 mb-5">
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <span className="font-serif text-[var(--text-lg)] text-[var(--theme-text-primary)] font-semibold">
             Discovered Gatherings
           </span>
@@ -31,12 +33,23 @@ export function DiscoveredFeed({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--theme-text-primary)] opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--theme-text-primary)]" />
               </span>
-              Scouting in the field...
+              Scouting two-lane pipeline...
             </span>
           ) : (
-            <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
-              ({events.length} results)
-            </span>
+            <>
+              <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
+                ({events.length} results)
+              </span>
+              {hybridStats && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[var(--text-2xs)] font-mono bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--theme-text-secondary)] shadow-xs">
+                  <Zap className="w-3 h-3 text-[var(--theme-text-muted)]" />
+                  <span>
+                    {hybridStats.structuredCount} Schema.org • {hybridStats.unstructuredCount} Deep-Lane
+                    {hybridStats.curationTimeSec ? ` • ${hybridStats.curationTimeSec}s` : ''}
+                  </span>
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -52,10 +65,10 @@ export function DiscoveredFeed({
               </div>
               <div>
                 <h4 className="text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] font-sans">
-                  Autonomous Scout Deployed
+                  Two-Lane Autonomous Scout Deployed
                 </h4>
                 <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans">
-                  Querying underground calendars, DIY music venues & verifying door contacts via Firecrawl & Gemini...
+                  Querying underground calendars, parsing Schema.org JSON-LD (Lane A) with DIY Deep-Lane fallback (Lane B)...
                 </p>
               </div>
             </div>
@@ -67,11 +80,11 @@ export function DiscoveredFeed({
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-text-primary)] animate-pulse" />
-                <span>2. Crawling calendars</span>
+                <span>2. Two-lane crawl</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-border-strong)]" />
-                <span>3. Curating events</span>
+                <span>3. Semantic curation</span>
               </div>
             </div>
           </div>

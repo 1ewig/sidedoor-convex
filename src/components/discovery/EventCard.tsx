@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { MapPin, Sparkles, Clock, Ticket, ArrowUpRight, Check } from 'lucide-react';
+import { MapPin, Sparkles, Clock, Ticket, ArrowUpRight, Check, Zap } from 'lucide-react';
 import { LocalEvent } from '@/types';
 
 interface EventCardProps {
@@ -46,6 +46,17 @@ export function EventCard({ event, onSelect }: EventCardProps) {
             <Ticket className="w-3 h-3 text-[var(--theme-text-muted)]" />
             <span>{event.price}</span>
           </div>
+
+          {event.firecrawlExtractedAt?.includes('structured') ? (
+            <span className="inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono text-[var(--theme-text-secondary)] bg-[var(--theme-bg-base)] px-2 py-0.5 rounded-full border border-[var(--theme-border-subtle)]">
+              <Zap className="w-2.5 h-2.5 text-[var(--theme-text-muted)]" />
+              JSON-LD
+            </span>
+          ) : event.firecrawlExtractedAt?.includes('unstructured') ? (
+            <span className="inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)] bg-[var(--theme-bg-base)] px-2 py-0.5 rounded-full border border-[var(--theme-border-subtle)]">
+              Deep-Lane
+            </span>
+          ) : null}
         </div>
 
         {/* Right Status / Arrow */}

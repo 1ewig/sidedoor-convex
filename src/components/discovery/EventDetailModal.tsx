@@ -11,6 +11,7 @@ import {
   Mail,
   Check,
   ExternalLink,
+  Zap,
 } from 'lucide-react';
 import { LocalEvent } from '@/types';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
@@ -195,6 +196,18 @@ export function EventDetailModal({
           <div className="pt-3 border-t border-[var(--theme-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-mono">
             {event.organizerName && (
               <span>Curated by {event.organizerName}</span>
+            )}
+            {event.firecrawlExtractedAt && (
+              <span className="inline-flex items-center gap-1">
+                <Zap className="w-3 h-3" />
+                <span>
+                  {event.firecrawlExtractedAt.includes('structured')
+                    ? 'Schema.org JSON-LD (Lane A)'
+                    : event.firecrawlExtractedAt.includes('unstructured')
+                    ? 'DIY Deep-Lane (Lane B)'
+                    : event.firecrawlExtractedAt}
+                </span>
+              </span>
             )}
             {event.sourceUrl && (
               <a

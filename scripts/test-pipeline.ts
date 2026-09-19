@@ -3,10 +3,10 @@ import { resolve } from 'path';
 import FirecrawlApp from '@mendable/firecrawl-js';
 import {
   generateDiscoveryQueries,
-  extractEventsFromMarkdown,
-  getTemporalContext,
-  ScrapedPageInput,
-} from '../src/lib/ai';
+} from '../src/lib/discovery/query-planner';
+import { runHybridEventDiscovery } from '../src/lib/discovery/pipeline';
+import { getTemporalContext } from '../src/lib/temporal';
+import { ScrapedPageInput } from '../src/types';
 import { calculateHaversineDistanceKm } from '../src/lib/geo';
 
 // Load environment
@@ -141,7 +141,7 @@ async function main() {
   console.log(`\n[Step 3/3] Parsing structured LocalEvent[] via Gemini 3.5 Flash Lite...`);
   const step3Start = Date.now();
 
-  const events = await extractEventsFromMarkdown(
+  const { events } = await runHybridEventDiscovery(
     allScrapedPages,
     userPrompt,
     location

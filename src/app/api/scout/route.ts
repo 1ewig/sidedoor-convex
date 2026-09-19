@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import FirecrawlApp from '@mendable/firecrawl-js';
-import {
-  generateDiscoveryQueries,
-  runHybridEventDiscovery,
-  ScrapedPageInput,
-} from '@/lib/ai';
-import { Coordinates } from '@/types';
+import { generateDiscoveryQueries } from '@/lib/discovery/query-planner';
+import { runHybridEventDiscovery } from '@/lib/discovery/pipeline';
+import { Coordinates, ScrapedPageInput } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {

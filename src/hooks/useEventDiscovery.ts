@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { LocalEvent, ScoutLog } from '@/types';
+import { LocalEvent, ScoutLog, HybridDiscoveryStats } from '@/types';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { useLocationStore } from '@/state/useLocationStore';
 
@@ -14,6 +14,7 @@ export function useEventDiscovery() {
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isScouting, setIsScouting] = useState<boolean>(false);
+  const [hybridStats, setHybridStats] = useState<HybridDiscoveryStats | null>(null);
   const [logs, setLogs] = useState<ScoutLog[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
@@ -88,7 +89,10 @@ export function useEventDiscovery() {
         const data = await res.json();
 
         if (res.ok && data.success && Array.isArray(data.events) && data.events.length > 0) {
-          const stats = data.stats;
+          const stats = data.stats as HybridDiscoveryStats | undefined;
+          if (stats) {
+            setHybridStats(stats);
+          }
           const statsInfo = stats
             ? ` (${stats.structuredCount} via Schema.org JSON-LD, ${stats.unstructuredCount} via DIY Deep-Lane in ${stats.curationTimeSec || 2}s)`
             : '';
@@ -156,6 +160,7 @@ export function useEventDiscovery() {
     updateFilters,
     isScouting,
     logs,
+    hybridStats,
     isDrawerOpen,
     setIsDrawerOpen,
     triggerScout,

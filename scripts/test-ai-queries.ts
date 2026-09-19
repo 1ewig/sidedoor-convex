@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { resolve } from 'path';
-import { generateDiscoveryQueries } from '../src/lib/ai';
+import { generateDiscoveryQueries } from '../src/lib/discovery/query-planner';
 
 // Load .env.local and .env
 dotenv.config({ path: resolve(process.cwd(), '.env.local') });
