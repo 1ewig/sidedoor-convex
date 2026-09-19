@@ -26,96 +26,33 @@ if (
   process.exit(1);
 }
 
-// User anchor (Brooklyn/NYC) for Haversine distance verification
+// Reference anchor coordinates for Brooklyn / NYC distance calculation
 const USER_COORDS = { lat: 40.7128, lng: -73.95 };
 
-// Optional fixture for offline / unit regression testing if --fixture flag is supplied
-function buildStructuredFixtureHtml(weekendStart: Date): string {
-  const isoDay = weekendStart.toISOString().split('T')[0];
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Model Living, Admin & Funsucker Live at Alphaville</title>
-        <meta property="og:image" content="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80">
-        <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "MusicEvent",
-          "name": "Model Living, Admin & Funsucker (Live)",
-          "description": "Lo-fi garage rock, jangly basement riffs, and raw post-punk showcase in the heart of Bushwick.",
-          "startDate": "${isoDay}T21:00:00-04:00",
-          "doorTime": "${isoDay}T20:00:00-04:00",
-          "location": {
-            "@type": "Place",
-            "name": "Alphaville",
-            "address": {
-              "@type": "PostalAddress",
-              "streetAddress": "140 Wilson Ave",
-              "addressLocality": "Brooklyn",
-              "postalCode": "11237",
-              "addressRegion": "NY"
-            },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": 40.7041,
-              "longitude": -73.9242
-            }
-          },
-          "offers": {
-            "@type": "Offer",
-            "price": "12.00",
-            "priceCurrency": "USD",
-            "availability": "https://schema.org/InStock",
-            "url": "https://alphavillebk.com/tickets"
-          },
-          "image": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80",
-          "organizer": {
-            "@type": "Organization",
-            "name": "Alphaville Booking",
-            "email": "booking@alphavillebk.com"
-          }
-        }
-        </script>
-      </head>
-      <body>
-        <h1>Model Living Live at Alphaville</h1>
-      </body>
-    </html>
-  `;
-}
-
 // =============================================================================
-// Harness: exercises the REAL 1:1 production pipeline (same as /api/scout)
+// Live Discovery Test Harness: 100% Real Web Scraping & Multi-Lane Pipeline
 // =============================================================================
 
 async function runTest(): Promise<void> {
-  const args = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
-  const includeFixture = process.argv.includes('--fixture');
-
   const userPrompt =
-    args[0] ||
+    process.argv[2] ||
     'indie rock shows, outdoor night fleas, or art vernissages within 20 km of me this weekend';
-  const location = args[1] || 'Brooklyn / New York City';
+  const location = process.argv[3] || 'Brooklyn / New York City';
 
-  const { currentDateStr, weekendStr, monthYearStr, targetWeekendRange } = getTemporalContext();
+  const { currentDateStr, weekendStr, monthYearStr } = getTemporalContext();
 
   console.log('\n======================================================');
-  console.log('   🚦 SideDoor — Discovery Pipeline Test Harness');
-  console.log('      (100% Aligned with /api/scout & Client App)');
+  console.log('   🚦 SideDoor — Live Discovery Pipeline Test');
+  console.log('      (100% Live Web Scraping & Production AI)');
   console.log('======================================================\n');
   console.log(`💬 User Request:     "${userPrompt}"`);
   console.log(`📍 Location Context: "${location}"`);
   console.log(`📅 Reference Date:   ${currentDateStr}`);
-  console.log(`⏳ Target Weekend:   ${weekendStr} (${monthYearStr})`);
-  if (includeFixture) {
-    console.log(`🧪 Fixture Mode:     Enabled (Alphaville synthetic fixture included)`);
-  }
-  console.log('');
+  console.log(`⏳ Target Weekend:   ${weekendStr} (${monthYearStr})\n`);
 
   const pipelineStart = Date.now();
 
-  // STEP 1: Query generation via Gemini Flash (same as /api/scout)
+  // STEP 1: Query generation via Gemini Flash
   console.log('[1/3] Generating multi-angle search queries via Gemini Flash...');
   const queryStart = Date.now();
   const queryResult = await generateDiscoveryQueries(userPrompt, location);
@@ -141,18 +78,6 @@ async function runTest(): Promise<void> {
 
   const seenUrls = new Set<string>();
   const allScrapedPages: ScrapedPageInput[] = [];
-
-  if (includeFixture) {
-    allScrapedPages.push({
-      url: 'https://alphavillebk.com/events/model-living-live',
-      title: 'Model Living, Admin & Funsucker Live at Alphaville',
-      markdown: 'Model Living live show at Alphaville in Bushwick.',
-      rawHtml: buildStructuredFixtureHtml(targetWeekendRange.start),
-      ogImage:
-        'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
-    });
-    seenUrls.add('https://alphavillebk.com/events/model-living-live');
-  }
 
   for (const res of searchSettled) {
     if (res.status === 'fulfilled') {
@@ -188,14 +113,14 @@ async function runTest(): Promise<void> {
   }
 
   const crawlElapsed = ((Date.now() - crawlStart) / 1000).toFixed(2);
-  console.log(`✅ Crawled & deduplicated ${allScrapedPages.length} unique pages in ${crawlElapsed}s.\n`);
+  console.log(`✅ Crawled & deduplicated ${allScrapedPages.length} unique live web pages in ${crawlElapsed}s.\n`);
 
   if (allScrapedPages.length === 0) {
-    console.warn('⚠️ No pages were retrieved from the search queries.');
+    console.warn('⚠️ No web pages were retrieved from the search queries.');
     return;
   }
 
-  // STEP 3: Execute the exact production hybrid pipeline
+  // STEP 3: Execute the production hybrid discovery pipeline
   console.log('[3/3] Executing production Hybrid Pipeline (Lane A + Lane B + Curator)...');
   const discoveryResult = await runHybridEventDiscovery(
     allScrapedPages,
@@ -208,15 +133,15 @@ async function runTest(): Promise<void> {
   const { events, stats } = discoveryResult;
 
   console.log('\n======================================================');
-  console.log(`🎉 Pipeline Execution Complete! (${events.length} Events, ${totalElapsed}s total)`);
+  console.log(`🎉 Live Pipeline Complete! (${events.length} Events Discovered in ${totalElapsed}s)`);
   console.log('======================================================');
   console.log(`📊 Pipeline Telemetry:`);
-  console.log(`   - Input Scraped Pages:    ${stats.pagesScrapedCount}`);
-  console.log(`   - Structured Fast Lane:   ${stats.structuredCount} events parsed`);
-  console.log(`   - Deep Fallback Lane:     ${stats.unstructuredCount} events parsed`);
-  console.log(`   - Total Curated Events:   ${events.length}`);
-  console.log(`   - Curator Processing:     ${stats.curationTimeSec}s`);
-  console.log(`   - Total Pipeline Time:    ${totalElapsed}s\n`);
+  console.log(`   - Input Live Scraped Pages: ${stats.pagesScrapedCount}`);
+  console.log(`   - Structured Fast Lane:     ${stats.structuredCount} events parsed`);
+  console.log(`   - Deep Fallback Lane:       ${stats.unstructuredCount} events parsed`);
+  console.log(`   - Final Curated Events:     ${events.length}`);
+  console.log(`   - Curator Processing Time:  ${stats.curationTimeSec}s`);
+  console.log(`   - Total Pipeline Time:      ${totalElapsed}s\n`);
 
   if (events.length === 0) {
     console.log('ℹ️  No events met the curation criteria for this weekend.\n');
