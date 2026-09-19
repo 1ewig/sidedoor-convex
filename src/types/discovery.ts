@@ -11,6 +11,7 @@ export interface ScrapedPageInput {
   markdown: string;
   rawHtml?: string;
   ogImage?: string;
+  extractedJson?: any;
 }
 
 export interface CandidateEvent {

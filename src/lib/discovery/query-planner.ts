@@ -67,8 +67,22 @@ export async function generateDiscoveryQueries(
     },
   });
 
+  // Defensive location guarantee: ensure every query contains local geography
+  const locKeywords = locationHint
+    .toLowerCase()
+    .split(/[\s,/]+/)
+    .filter((w) => w.length > 2);
+  const primaryLoc = locationHint.split('/')[0].trim();
+
+  const anchoredQueries = result.object.queries.map((q) => {
+    const qLower = q.toLowerCase();
+    const hasLocation = locKeywords.some((kw) => qLower.includes(kw));
+    return hasLocation ? q : `${q} ${primaryLoc}`;
+  });
+
   return {
     ...result.object,
+    queries: anchoredQueries,
     usage: result.usage,
   };
 }

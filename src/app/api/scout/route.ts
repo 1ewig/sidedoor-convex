@@ -3,6 +3,11 @@ import FirecrawlApp from '@mendable/firecrawl-js';
 import { generateDiscoveryQueries } from '@/lib/discovery/query-planner';
 import { runHybridEventDiscovery } from '@/lib/discovery/pipeline';
 import { Coordinates, ScrapedPageInput } from '@/types';
+import {
+  FIRECRAWL_EVENT_LIST_SCHEMA,
+  FIRECRAWL_EVENT_EXTRACTION_PROMPT,
+} from '@/lib/discovery/firecrawl-schema';
+import { resolveHubPermalinks } from '@/lib/discovery/hub-resolver';
 
 export async function POST(req: NextRequest) {
   const reqStart = Date.now();
@@ -57,14 +62,27 @@ export async function POST(req: NextRequest) {
     const queryResult = await generateDiscoveryQueries(prompt, location);
     console.log(`[API /api/scout] Generated ${queryResult.queries.length} queries:`, queryResult.queries);
 
-    // STEP 2: Multi-query parallel crawl via Firecrawl (requesting 'markdown' + 'rawHtml' for Schema.org JSON-LD)
+    // STEP 2: Multi-query parallel crawl via Firecrawl (requesting 'markdown' + 'rawHtml' + plain JSON Schema)
     console.log('[API /api/scout] Step 2: Parallel crawling via Firecrawl...');
     const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
     const searchSettled = await Promise.allSettled(
       queryResult.queries.map((q) =>
         firecrawl.search(q, {
           limit: 2,
-          scrapeOptions: { formats: ['markdown', 'rawHtml'] },
+          location: location,
+          country: 'US',
+          scrapeOptions: {
+            formats: [
+              'markdown',
+              'rawHtml',
+              {
+                type: 'json',
+                schema: FIRECRAWL_EVENT_LIST_SCHEMA,
+                prompt: FIRECRAWL_EVENT_EXTRACTION_PROMPT,
+              },
+            ],
+            onlyMainContent: true,
+          },
         })
       )
     );
@@ -100,12 +118,35 @@ export async function POST(req: NextRequest) {
             markdown,
             rawHtml,
             ogImage: flyerImage,
+            extractedJson: item.json || null,
           });
         }
       }
     }
 
-    console.log(`[API /api/scout] Crawled & deduplicated ${allScrapedPages.length} pages.`);
+    console.log(`[API /api/scout] Crawled & deduplicated ${allScrapedPages.length} primary search pages.`);
+
+    // STEP 2B: Hub & Venue permalink resolution via /map and parallel /scrape
+    try {
+      const hubPages = await resolveHubPermalinks(
+        firecrawl,
+        Array.from(seenUrls),
+        location,
+        seenUrls,
+        3
+      );
+      for (const p of hubPages) {
+        if (!seenUrls.has(p.url)) {
+          seenUrls.add(p.url);
+          allScrapedPages.push(p);
+        }
+      }
+      if (hubPages.length > 0) {
+        console.log(`[API /api/scout] Augmented with ${hubPages.length} direct event permalinks from calendar hubs.`);
+      }
+    } catch (hubErr: any) {
+      console.warn('[API /api/scout] Hub permalink resolution warning:', hubErr?.message || hubErr);
+    }
 
     if (allScrapedPages.length === 0) {
       return NextResponse.json({

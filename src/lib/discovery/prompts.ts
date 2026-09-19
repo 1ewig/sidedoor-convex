@@ -27,10 +27,13 @@ Search Query Strategy & Domain Targeting:
 3. Query 3 (Secret Shows, Indie RSVPs & Community Dispatches):
    - Target secret gatherings, DIY linktrees, or platform RSVPs (e.g. site:lu.ma, site:partiful.com, "secret show", "loft party").
 
+Strict Location Anchoring Rule:
+- EVERY single query MUST explicitly contain the location terms ("${locationHint}") inside the search query text itself.
+- Never generate a query that lacks the city/neighborhood name, or datacenter search proxies will return results from irrelevant cities.
+
 Anti-Commercial Guardrails:
 - Append negative filters where appropriate to exclude stadium tours and ticket scalpers: -site:ticketmaster.com -site:stubhub.com -site:seatgeek.com.
 - Never search for generic "Top 10 tourist attractions". Search for specific calendars, flyers, and lineups.
-- Include location context ("${locationHint}").
 - Output exactly 3 queries.`;
 }
 

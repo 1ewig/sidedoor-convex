@@ -1,4 +1,4 @@
-import { LocalEvent } from '@/types';
+import { LocalEvent, EventCategory } from '@/types';
 import { CandidateEvent, HybridDiscoveryResult, ScrapedPageInput } from '@/types/discovery';
 import { extractStructuredEventsFromHtml } from '../schema-org';
 import { extractFromUnstructuredMarkdown } from './deep-lane';
@@ -6,11 +6,70 @@ import { curateCandidatesWithLLM } from './curator';
 import { MAX_PIPELINE_CANDIDATES } from './config';
 import { getTemporalContext } from '../temporal';
 import { calculateHaversineDistanceKm } from '../geo';
+import { createCandidateId } from './id';
+
+function inferCategoryFromText(text: string): EventCategory {
+  const lower = text.toLowerCase();
+  if (/exhibition|art|gallery|vernissage|paint|sculpture|photo/i.test(lower)) return 'art';
+  if (/market|flea|vintage|craft|makers|bazaar/i.test(lower)) return 'market';
+  if (/food|dinner|tasting|chef|bakery|brunch|supper/i.test(lower)) return 'food';
+  if (/club|rave|techno|dj|dance|nightlife|disco/i.test(lower)) return 'nightlife';
+  if (/community|meetup|volunteer|garden|talk|reading/i.test(lower)) return 'community';
+  return 'music';
+}
+
+function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] {
+  if (!page.extractedJson) return [];
+
+  const candidates: CandidateEvent[] = [];
+  const raw = page.extractedJson;
+
+  const eventList = Array.isArray(raw.events)
+    ? raw.events
+    : !Array.isArray(raw) && raw.title
+    ? [raw]
+    : [];
+
+  for (const item of eventList) {
+    if (!item || !item.title || typeof item.title !== 'string') continue;
+
+    const title = item.title.trim();
+    if (!title) continue;
+
+    const venue = item.venue?.trim() || page.title || 'Local Venue';
+    const address = item.address?.trim() || venue;
+    const price = item.price ? String(item.price).trim() : (item.isFree ? 'Free Entry' : 'Door / RSVP');
+    const isFree = item.isFree === true || /free|pwyc/i.test(price);
+    const coverImage = item.imageUrl || page.ogImage;
+    const formattedDate = item.date?.trim() || 'This Weekend';
+    const formattedTime = (item.doorTime || item.time || '8:00 PM').trim();
+
+    candidates.push({
+      id: createCandidateId('structured'),
+      sourceLane: 'structured',
+      title,
+      category: inferCategoryFromText(`${title} ${item.description || ''} ${venue}`),
+      venueName: venue,
+      address,
+      formattedDate,
+      formattedTime,
+      price,
+      isFree,
+      coverImage,
+      sourceUrl: item.ticketUrl || page.url,
+      organizerName: venue,
+      organizerEmail: `booking@${venue.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+      rawSnippet: item.description?.slice(0, 300),
+    });
+  }
+
+  return candidates;
+}
 
 /**
  * Master coordinator: runs the two-lane hybrid discovery pipeline.
  *
- * 1. Lane A — deterministic Schema.org JSON-LD extraction (no LLM cost)
+ * 1. Lane A — deterministic Schema.org JSON-LD extraction & Firecrawl structured JSON (0 extra LLM cost)
  * 2. Lane B — Gemini deep-lane fallback for pages without structured data
  * 3. Semantic curator — LLM enrichment (matchScore, vibeTags, tagline)
  * 4. Haversine distance enrichment against real user coordinates
@@ -26,7 +85,7 @@ export async function runHybridEventDiscovery(
   const laneA_Candidates: CandidateEvent[] = [];
   const laneB_Pages: ScrapedPageInput[] = [];
 
-  // Dispatch pages to Lane A vs Lane B
+  // Dispatch pages: use Schema.org and Firecrawl JSON if present, else fallback to Lane B
   for (const page of scrapedPages) {
     const rawContent = page.rawHtml || '';
     const structured = extractStructuredEventsFromHtml(
@@ -36,8 +95,10 @@ export async function runHybridEventDiscovery(
       { weekendStart: targetWeekendRange.start, weekendEnd: targetWeekendRange.end }
     );
 
-    if (structured.length > 0) {
-      laneA_Candidates.push(...structured);
+    const firecrawlStructured = parseFirecrawlJsonCandidates(page);
+
+    if (structured.length > 0 || firecrawlStructured.length > 0) {
+      laneA_Candidates.push(...structured, ...firecrawlStructured);
     } else {
       laneB_Pages.push(page);
     }

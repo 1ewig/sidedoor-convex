@@ -5,6 +5,11 @@ import { generateDiscoveryQueries } from '../src/lib/discovery/query-planner';
 import { runHybridEventDiscovery } from '../src/lib/discovery/pipeline';
 import { getTemporalContext } from '../src/lib/temporal';
 import { ScrapedPageInput } from '../src/types';
+import {
+  FIRECRAWL_EVENT_LIST_SCHEMA,
+  FIRECRAWL_EVENT_EXTRACTION_PROMPT,
+} from '../src/lib/discovery/firecrawl-schema';
+import { resolveHubPermalinks } from '../src/lib/discovery/hub-resolver';
 
 // Load environment variables
 dotenv.config({ path: resolve(process.cwd(), '.env.local') });
@@ -63,7 +68,7 @@ async function runTest(): Promise<void> {
   });
   console.log(`   🏷️  Extracted Vibe Tags: [${queryResult.vibeTags.join(', ')}]\n`);
 
-  // STEP 2: Multi-query parallel crawl via Firecrawl (markdown + rawHtml for JSON-LD)
+  // STEP 2: Multi-query parallel crawl via Firecrawl (markdown + rawHtml + plain JSON schema)
   console.log('[2/3] Crawling web pages across all query angles in parallel...');
   const crawlStart = Date.now();
   const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
@@ -71,7 +76,20 @@ async function runTest(): Promise<void> {
     queryResult.queries.map((q) =>
       firecrawl.search(q, {
         limit: 2,
-        scrapeOptions: { formats: ['markdown', 'rawHtml'] },
+        location,
+        country: 'US',
+        scrapeOptions: {
+          formats: [
+            'markdown',
+            'rawHtml',
+            {
+              type: 'json',
+              schema: FIRECRAWL_EVENT_LIST_SCHEMA,
+              prompt: FIRECRAWL_EVENT_EXTRACTION_PROMPT,
+            },
+          ],
+          onlyMainContent: true,
+        },
       })
     )
   );
@@ -107,9 +125,32 @@ async function runTest(): Promise<void> {
           markdown,
           rawHtml,
           ogImage: flyerImage,
+          extractedJson: item.json || null,
         });
       }
     }
+  }
+
+  // Step 2B: Resolve calendar hub permalinks
+  try {
+    const hubPages = await resolveHubPermalinks(
+      firecrawl,
+      Array.from(seenUrls),
+      location,
+      seenUrls,
+      3
+    );
+    for (const p of hubPages) {
+      if (!seenUrls.has(p.url)) {
+        seenUrls.add(p.url);
+        allScrapedPages.push(p);
+      }
+    }
+    if (hubPages.length > 0) {
+      console.log(`✅ Augmented with ${hubPages.length} direct event permalinks from calendar hubs.`);
+    }
+  } catch (hubErr: any) {
+    console.warn('⚠️ Hub permalink resolution warning:', hubErr?.message || hubErr);
   }
 
   const crawlElapsed = ((Date.now() - crawlStart) / 1000).toFixed(2);
