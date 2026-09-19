@@ -28,7 +28,6 @@ export function PageClient() {
     events,
     filters,
     isScouting,
-    hybridStats,
     updateFilters,
     markEventOutreach,
     triggerScout,
@@ -123,7 +122,6 @@ export function PageClient() {
           events={events}
           isOpen={isFeedOpen}
           isScouting={isScouting}
-          hybridStats={hybridStats}
           onSelectEvent={(event) => setSelectedEvent(event)}
         />
       </div>

@@ -57,17 +57,17 @@ export function useEventDiscovery() {
         id: `log-${Date.now()}-1`,
         timestamp: timeStr(),
         level: 'info',
-        message: `Agent initiated 3-stage discovery for: "${promptText}"`,
+        message: `Agent searching for: "${promptText}"`,
       };
       setLogs((prev) => [startLog, ...prev]);
 
       try {
-        // Step 2: Firecrawl crawl progress notice
+        // Step 2: Live search progress notice
         const crawlLog: ScoutLog = {
           id: `log-${Date.now()}-2`,
           timestamp: timeStr(),
           level: 'scrape',
-          message: 'Firecrawl API: Crawling 3 distinct query angles across indie calendars & DIY venues...',
+          message: 'Scouting local calendars, small-door venues, and DIY show flyers...',
         };
         setLogs((prev) => [crawlLog, ...prev]);
 
@@ -93,15 +93,12 @@ export function useEventDiscovery() {
           if (stats) {
             setHybridStats(stats);
           }
-          const statsInfo = stats
-            ? ` (${stats.structuredCount} via Schema.org JSON-LD, ${stats.unstructuredCount} via DIY Deep-Lane in ${stats.curationTimeSec || 2}s)`
-            : '';
           const successLog: ScoutLog = {
             id: `log-${Date.now()}-3`,
             timestamp: timeStr(),
             level: 'ai',
-            message: `Two-Lane Hybrid Scout: Extracted ${data.events.length} verified events${statsInfo}!`,
-            details: `Discovered: ${data.events.map((e: LocalEvent) => e.title).slice(0, 3).join(', ')}.`,
+            message: `Discovered ${data.events.length} gatherings curated for your vibe!`,
+            details: `Gatherings: ${data.events.map((e: LocalEvent) => e.title).slice(0, 3).join(', ')}.`,
           };
           setLogs((prev) => [successLog, ...prev]);
 

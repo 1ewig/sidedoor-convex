@@ -135,7 +135,7 @@ export function ScoutFilterDrawer({
                     Scout Tuning
                   </h3>
                   <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans mt-0.5">
-                    Fine-tune crawler &amp; discovery rules
+                    Fine-tune gathering &amp; vibe filters
                   </p>
                 </div>
               </div>
