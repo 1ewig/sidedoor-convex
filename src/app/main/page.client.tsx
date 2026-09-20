@@ -16,7 +16,6 @@ import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { LocalEvent } from '@/types';
 
 export function PageClient() {
-  const [isFeedOpen, setIsFeedOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -29,6 +28,8 @@ export function PageClient() {
     filters,
     isScouting,
     hybridStats,
+    isFeedOpen,
+    setIsFeedOpen,
     updateFilters,
     markEventOutreach,
     triggerScout,
@@ -123,7 +124,7 @@ export function PageClient() {
       <div id="resultsFeed">
         <DiscoveredFeed
           events={events}
-          isOpen={isFeedOpen}
+          isOpen={isFeedOpen || events.length > 0}
           isScouting={isScouting}
           hybridStats={hybridStats}
           onSelectEvent={(event) => setSelectedEvent(event)}

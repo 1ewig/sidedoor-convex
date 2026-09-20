@@ -6,11 +6,14 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useConvexConfig } from '@/components/providers/ConvexClientProvider';
 import { useSessionStore } from '@/state/useSessionStore';
+import { useAgentMailStore } from '@/state/useAgentMailStore';
 import { EmailThread, EmailMessage, LocalEvent } from '@/types';
 
 export function useAgentMail() {
-  const [localThreads, setLocalThreads] = useState<EmailThread[]>([]);
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const localThreads = useAgentMailStore((state) => state.localThreads);
+  const setLocalThreads = useAgentMailStore((state) => state.setLocalThreads);
+  const selectedThreadId = useAgentMailStore((state) => state.selectedThreadId);
+  const setSelectedThreadId = useAgentMailStore((state) => state.setSelectedThreadId);
   const [isMailModalOpen, setIsMailModalOpen] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
 
@@ -135,7 +138,14 @@ export function useAgentMail() {
         );
       }, 3500);
     },
-    [createInquiryMutation, isConfigured, sessionId, threads]
+    [
+      createInquiryMutation,
+      isConfigured,
+      sessionId,
+      setLocalThreads,
+      setSelectedThreadId,
+      threads,
+    ]
   );
 
   const replyToThread = useCallback(
@@ -177,7 +187,7 @@ export function useAgentMail() {
         });
       }
     },
-    [addMessageMutation, isConfigured]
+    [addMessageMutation, isConfigured, setLocalThreads]
   );
 
   return {

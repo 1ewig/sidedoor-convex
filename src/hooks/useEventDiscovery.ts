@@ -5,13 +5,27 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useConvexConfig } from '@/components/providers/ConvexClientProvider';
 import { useSessionStore } from '@/state/useSessionStore';
+import { useEventStore } from '@/state/useEventStore';
 import { LocalEvent, ScoutLog, HybridDiscoveryStats } from '@/types';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { useLocationStore } from '@/state/useLocationStore';
 import { matchesSearchFilters } from '@/lib/discovery/filters';
 
 export function useEventDiscovery() {
-  const [scoutedEvents, setScoutedEvents] = useState<LocalEvent[]>([]);
+  const scoutedEvents = useEventStore((state) => state.scoutedEvents);
+  const appendScoutedEvents = useEventStore((state) => state.appendScoutedEvents);
+  const updateEventOutreachStatusInStore = useEventStore(
+    (state) => state.updateEventOutreachStatus
+  );
+  const hybridStats = useEventStore((state) => state.hybridStats);
+  const setHybridStats = useEventStore((state) => state.setHybridStats);
+  const logs = useEventStore((state) => state.logs);
+  const appendLog = useEventStore((state) => state.appendLog);
+  const selectedEventId = useEventStore((state) => state.selectedEventId);
+  const setSelectedEventId = useEventStore((state) => state.setSelectedEventId);
+  const isFeedOpen = useEventStore((state) => state.isFeedOpen);
+  const setIsFeedOpen = useEventStore((state) => state.setIsFeedOpen);
+
   const filters = useScoutFilterStore((state) => state.filters);
   const updateFilters = useScoutFilterStore((state) => state.updateFilters);
   const locationLabel = useLocationStore((state) => state.location.label);
@@ -36,10 +50,7 @@ export function useEventDiscovery() {
     return [...scoutedEvents, ...uniqueConvex];
   }, [convexEvents, scoutedEvents]);
 
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isScouting, setIsScouting] = useState<boolean>(false);
-  const [hybridStats, setHybridStats] = useState<HybridDiscoveryStats | null>(null);
-  const [logs, setLogs] = useState<ScoutLog[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
   // Selected event object
@@ -92,7 +103,7 @@ export function useEventDiscovery() {
         level: 'info',
         message: `Agent scouting (${isFast ? '⚡ Fast' : '🔬 Deep'} • ${filters.when}): "${promptText}"`,
       };
-      setLogs((prev) => [startLog, ...prev]);
+      appendLog(startLog);
 
       try {
         // Step 2: Live search progress notice
@@ -104,7 +115,7 @@ export function useEventDiscovery() {
             ? `⚡ Fast scan for ${filters.when} via venue calendars & JSON-LD...`
             : `🔬 Deep multi-angle crawl for ${filters.when} across DIY venues & Linktrees...`,
         };
-        setLogs((prev) => [crawlLog, ...prev]);
+        appendLog(crawlLog);
 
         console.log(`🚀 Dispatching request to /api/scout [Mode: ${filters.scoutMode}, When: ${filters.when}]...`);
 
@@ -182,14 +193,11 @@ export function useEventDiscovery() {
             message: `Discovered ${data.events.length} gatherings via ${isFast ? '⚡ Fast Scout' : '🔬 Deep Scout'} in ${clientDuration}s!`,
             details: `Gatherings: ${data.events.map((e: LocalEvent) => e.title).slice(0, 3).join(', ')}.`,
           };
-          setLogs((prev) => [successLog, ...prev]);
+          appendLog(successLog);
 
-          // Prepend newly discovered events to the feed
-          setScoutedEvents((prev) => {
-            const existingIds = new Set(prev.map((e) => e.id));
-            const freshEvents = data.events.filter((e: LocalEvent) => !existingIds.has(e.id));
-            return [...freshEvents, ...prev];
-          });
+          // Prepend newly discovered events to the persistent store
+          appendScoutedEvents(data.events);
+          setIsFeedOpen(true);
 
           // Persist discovered events and scout log to Convex if configured
           if (isConfigured) {
@@ -256,7 +264,7 @@ export function useEventDiscovery() {
           level: 'info',
           message: `Scout report: ${warnMessage}`,
         };
-        setLogs((prev) => [warnLog, ...prev]);
+        appendLog(warnLog);
         console.groupEnd();
       } catch (err: unknown) {
         console.error('❌ Scout Pipeline Error:', err);
@@ -267,13 +275,15 @@ export function useEventDiscovery() {
           level: 'info',
           message: `Scout pipeline connection error: ${errMessage}`,
         };
-        setLogs((prev) => [errLog, ...prev]);
+        appendLog(errLog);
         console.groupEnd();
       } finally {
         setIsScouting(false);
       }
     },
     [
+      appendLog,
+      appendScoutedEvents,
       countryCode,
       filters,
       isConfigured,
@@ -282,17 +292,16 @@ export function useEventDiscovery() {
       logRunMutation,
       saveBatchMutation,
       sessionId,
+      setHybridStats,
+      setIsFeedOpen,
+      setSelectedEventId,
       userCoordinates,
     ]
   );
 
   const markEventOutreach = useCallback(
     (eventId: string) => {
-      setScoutedEvents((prev) =>
-        prev.map((evt) =>
-          evt.id === eventId ? { ...evt, outreachStatus: 'sent' } : evt
-        )
-      );
+      updateEventOutreachStatusInStore(eventId, 'sent');
       if (isConfigured) {
         updateOutreachMutation({ eventId, status: 'sent' }).catch(
           (err: unknown) => {
@@ -301,7 +310,7 @@ export function useEventDiscovery() {
         );
       }
     },
-    [isConfigured, updateOutreachMutation]
+    [isConfigured, updateEventOutreachStatusInStore, updateOutreachMutation]
   );
 
   return {
@@ -317,6 +326,8 @@ export function useEventDiscovery() {
     hybridStats,
     isDrawerOpen,
     setIsDrawerOpen,
+    isFeedOpen,
+    setIsFeedOpen,
     triggerScout,
     markEventOutreach,
   };
