@@ -30,8 +30,8 @@ export function useAgentMail() {
   const threads = useMemo(() => {
     if (convexThreads && Array.isArray(convexThreads) && convexThreads.length > 0) {
       const convexMapped = convexThreads as unknown as EmailThread[];
-      const existingIds = new Set(convexMapped.map((t) => t.id));
-      const pendingLocal = localThreads.filter((t) => !existingIds.has(t.id));
+      const existingEventIds = new Set(convexMapped.map((t) => t.eventId));
+      const pendingLocal = localThreads.filter((t) => !existingEventIds.has(t.eventId));
       return [...pendingLocal, ...convexMapped];
     }
     return localThreads;
@@ -43,8 +43,6 @@ export function useAgentMail() {
   // Send an automated inquiry for an event
   const sendEventInquiry = useCallback(
     (event: LocalEvent, customQuestion?: string) => {
-      setIsSending(true);
-
       const threadId = `th-${event.id}`;
       const questionBody =
         customQuestion ||
@@ -65,11 +63,13 @@ export function useAgentMail() {
       if (existingThread) {
         setLocalThreads((prev) =>
           prev.map((t) =>
-            t.id === existingThread.id
+            t.id === existingThread.id || t.eventId === event.id
               ? {
                   ...t,
                   lastMessageAt: 'Just now',
-                  messages: [...t.messages, newOutboundMessage],
+                  messages: t.messages.some((m) => m.body === questionBody)
+                    ? t.messages
+                    : [...t.messages, newOutboundMessage],
                 }
               : t
           )
@@ -89,7 +89,10 @@ export function useAgentMail() {
           messages: [newOutboundMessage],
         };
 
-        setLocalThreads((prev) => [newThread, ...prev]);
+        setLocalThreads((prev) => {
+          if (prev.some((t) => t.eventId === event.id)) return prev;
+          return [newThread, ...prev];
+        });
         setSelectedThreadId(newThread.id);
       }
 

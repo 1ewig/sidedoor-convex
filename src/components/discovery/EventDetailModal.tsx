@@ -231,8 +231,12 @@ export function EventDetailModal({
             ) : (
               <button
                 type="button"
-                onClick={() => onSendAgentMail(event)}
-                className="inline-flex items-center gap-2 px-5 py-2 text-[var(--text-xs)] font-medium rounded-full bg-[var(--theme-text-primary)] hover:bg-[var(--theme-text-secondary)] text-[var(--theme-bg-surface)] hover:shadow-xs active:scale-[0.98] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
+                disabled={isSent}
+                onClick={() => {
+                  if (isSent) return;
+                  onSendAgentMail(event);
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2 text-[var(--text-xs)] font-medium rounded-full bg-[var(--theme-text-primary)] hover:bg-[var(--theme-text-secondary)] disabled:opacity-50 text-[var(--theme-bg-surface)] hover:shadow-xs active:scale-[0.98] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
               >
                 <Mail className="w-3.5 h-3.5" />
                 <span>Contact Organizer via AgentMail</span>
