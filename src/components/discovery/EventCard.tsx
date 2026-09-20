@@ -9,18 +9,11 @@ interface EventCardProps {
   onSelect: (event: LocalEvent) => void;
 }
 
-const CATEGORY_STYLES: Record<string, string> = {
-  music: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
-  art: 'bg-[var(--theme-text-primary)]/5 text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
-  market: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
-  nightlife: 'bg-[var(--theme-text-primary)]/10 text-[var(--theme-text-primary)] border-[var(--theme-text-primary)]/20',
-  food: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
-  community: 'bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] border-[var(--theme-border-subtle)]',
-};
+const PILL_BASE_STYLE =
+  'inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono font-medium text-[var(--theme-text-primary)] bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] px-2 py-0.5 rounded-full';
 
 export function EventCard({ event, onSelect }: EventCardProps) {
   const isSent = event.outreachStatus === 'sent' || event.outreachStatus === 'replied';
-  const categoryClass = CATEGORY_STYLES[event.category] || CATEGORY_STYLES.music;
   const thumbnailImages =
     event.coverImages && event.coverImages.length > 0
       ? event.coverImages
@@ -37,28 +30,26 @@ export function EventCard({ event, onSelect }: EventCardProps) {
       {/* Top Metadata Row: Badges + Price + Inquired/Details signal */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            className={`text-[var(--text-2xs)] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${categoryClass}`}
-          >
+          <span className={`${PILL_BASE_STYLE} capitalize`}>
             {event.category}
           </span>
 
-          <span className="inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono text-[var(--theme-text-primary)] bg-[var(--theme-text-primary)]/5 px-2 py-0.5 rounded-full font-medium border border-[var(--theme-border-subtle)]">
-            <Sparkles className="w-3 h-3 text-[var(--theme-text-muted)]" />
-            {event.matchScore}% Match
+          <span className={PILL_BASE_STYLE}>
+            <Sparkles className="w-3 h-3 text-[var(--theme-text-muted)] shrink-0" />
+            <span>{event.matchScore}% Match</span>
           </span>
 
-          <div className="inline-flex items-center gap-1 text-[var(--text-2xs)] font-medium font-sans text-[var(--theme-text-secondary)] bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] px-2 py-0.5 rounded-full">
-            <Ticket className="w-3 h-3 text-[var(--theme-text-muted)]" />
+          <span className={PILL_BASE_STYLE}>
+            <Ticket className="w-3 h-3 text-[var(--theme-text-muted)] shrink-0" />
             <span>{event.price}</span>
-          </div>
+          </span>
         </div>
 
         {/* Right Status / Arrow */}
         <div className="flex items-center gap-1.5 shrink-0">
           {isSent ? (
-            <span className="inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono text-[var(--theme-text-primary)] bg-[var(--theme-text-primary)]/5 border border-[var(--theme-border-subtle)] px-2 py-0.5 rounded-full">
-              <Check className="w-3 h-3" />
+            <span className={PILL_BASE_STYLE}>
+              <Check className="w-3 h-3 text-[var(--theme-text-muted)] shrink-0" />
               <span className="hidden sm:inline">Inquired</span>
             </span>
           ) : (
