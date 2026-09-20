@@ -60,6 +60,7 @@ export const createInquiry = mutation({
     agentEmail: v.string(),
     subject: v.string(),
     questionBody: v.string(),
+    agentmailThreadId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if a thread already exists for this event and session
@@ -84,12 +85,14 @@ export const createInquiry = mutation({
         subject: args.subject,
         lastMessageAt: sentAtStr,
         status: 'pending',
+        agentmailThreadId: args.agentmailThreadId,
       });
       thread = await ctx.db.get(threadId);
     } else {
       await ctx.db.patch(thread._id, {
         lastMessageAt: sentAtStr,
         status: 'pending',
+        ...(args.agentmailThreadId ? { agentmailThreadId: args.agentmailThreadId } : {}),
       });
     }
 
@@ -151,5 +154,59 @@ export const addMessage = mutation({
     });
 
     return { messageId };
+  },
+});
+
+export const addMessageFromAgentMail = mutation({
+  args: {
+    agentmailThreadId: v.string(),
+    senderEmail: v.string(),
+    senderName: v.optional(v.string()),
+    subject: v.optional(v.string()),
+    body: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Look up by agentmailThreadId
+    let thread = await ctx.db
+      .query('threads')
+      .withIndex('by_agentmailThreadId', (q) =>
+        q.eq('agentmailThreadId', args.agentmailThreadId)
+      )
+      .first();
+
+    // Fallback: match by organizer email if threadId was not yet linked
+    if (!thread) {
+      thread = await ctx.db
+        .query('threads')
+        .filter((q) => q.eq(q.field('organizerEmail'), args.senderEmail))
+        .first();
+    }
+
+    if (!thread) {
+      console.warn(`⚠️ [Convex] No thread matched for AgentMail threadId: ${args.agentmailThreadId}`);
+      return { success: false, reason: 'thread_not_found' };
+    }
+
+    const now = Date.now();
+    const sentAtStr = 'Just now';
+
+    const messageId = await ctx.db.insert('messages', {
+      threadId: thread._id,
+      sender: 'organizer',
+      senderName: args.senderName || thread.organizerName,
+      senderEmail: args.senderEmail,
+      subject: args.subject || `Re: ${thread.subject}`,
+      body: args.body,
+      sentAt: sentAtStr,
+      timestamp: now,
+    });
+
+    await ctx.db.patch(thread._id, {
+      lastMessageAt: sentAtStr,
+      status: 'responded',
+      agentmailThreadId: args.agentmailThreadId,
+    });
+
+    return { success: true, messageId, threadId: thread._id };
   },
 });

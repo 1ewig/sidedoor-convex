@@ -49,9 +49,11 @@ export default defineSchema({
     subject: v.string(),
     lastMessageAt: v.string(),
     status: v.union(v.literal('pending'), v.literal('responded'), v.literal('confirmed')),
+    agentmailThreadId: v.optional(v.string()),
   })
     .index('by_sessionId', ['sessionId'])
-    .index('by_session_and_event', ['sessionId', 'eventId']),
+    .index('by_session_and_event', ['sessionId', 'eventId'])
+    .index('by_agentmailThreadId', ['agentmailThreadId']),
 
   messages: defineTable({
     threadId: v.id('threads'),

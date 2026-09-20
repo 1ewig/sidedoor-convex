@@ -96,50 +96,74 @@ export function useAgentMail() {
         setSelectedThreadId(newThread.id);
       }
 
-      // Sync to Convex if configured
-      if (isConfigured) {
-        createInquiryMutation({
-          sessionId,
-          eventId: event.id,
-          eventTitle: event.title,
-          organizerName: event.organizerName,
-          organizerEmail: event.organizerEmail,
-          agentEmail: 'scout-alpha@sidedoor.agentmail.to',
-          subject: `Inquiry: ${event.title}`,
-          questionBody,
-        }).catch((err: unknown) => {
-          console.warn('⚠️ [Convex] Failed to persist inquiry:', err);
-        });
-      }
-
-      setIsSending(false);
+      setIsSending(true);
       setIsMailModalOpen(true);
 
-      // Simulate organizer responding after 3.5 seconds
-      setTimeout(() => {
-        const autoReply: EmailMessage = {
-          id: `reply-${Date.now()}`,
-          sender: 'organizer',
-          senderName: event.organizerName,
-          senderEmail: event.organizerEmail,
-          subject: `Re: Inquiry: ${event.title}`,
-          body: `Thanks for checking in! Yes, we have about 30 tickets set aside at the door for $15 cash/card. Venue doors open at ${event.formattedTime.split(' - ')[0] || '7:30 PM'}. Looking forward to seeing you there!`,
-          sentAt: 'Just now',
-        };
+      // Call outbound AgentMail dispatch endpoint
+      fetch('/api/agent-mail/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event, questionBody }),
+      })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then((data) => {
+          const isLive = Boolean(data && data.isLive);
+          const agentmailThreadId = data?.agentmailThreadId;
 
-        setLocalThreads((prev) =>
-          prev.map((t) =>
-            t.eventId === event.id
-              ? {
-                  ...t,
-                  status: 'responded',
-                  lastMessageAt: 'Just now',
-                  messages: [...t.messages, autoReply],
-                }
-              : t
-          )
-        );
-      }, 3500);
+          // Sync to Convex if configured
+          if (isConfigured) {
+            createInquiryMutation({
+              sessionId,
+              eventId: event.id,
+              eventTitle: event.title,
+              organizerName: event.organizerName,
+              organizerEmail: event.organizerEmail,
+              agentEmail: data?.agentEmail || 'scout-alpha@sidedoor.agentmail.to',
+              subject: `Inquiry: ${event.title}`,
+              questionBody,
+              agentmailThreadId,
+            }).catch((err: unknown) => {
+              console.warn('⚠️ [Convex] Failed to persist inquiry:', err);
+            });
+          }
+
+          // If NOT live (no API key or simulated mode), simulate organizer reply after 3.5s
+          if (!isLive) {
+            setTimeout(() => {
+              const autoReply: EmailMessage = {
+                id: `reply-${Date.now()}`,
+                sender: 'organizer',
+                senderName: event.organizerName,
+                senderEmail: event.organizerEmail,
+                subject: `Re: Inquiry: ${event.title}`,
+                body: `Thanks for checking in! Yes, we have about 30 tickets set aside at the door for $15 cash/card. Venue doors open at ${event.formattedTime.split(' - ')[0] || '7:30 PM'}. Looking forward to seeing you there!`,
+                sentAt: 'Just now',
+              };
+
+              setLocalThreads((prev) =>
+                prev.map((t) =>
+                  t.eventId === event.id
+                    ? {
+                        ...t,
+                        status: 'responded',
+                        lastMessageAt: 'Just now',
+                        messages: [...t.messages, autoReply],
+                      }
+                    : t
+                )
+              );
+            }, 3500);
+          }
+        })
+        .catch((err) => {
+          console.warn('⚠️ [AgentMail] Error contacting /api/agent-mail/send:', err);
+        })
+        .finally(() => {
+          setIsSending(false);
+        });
     },
     [
       createInquiryMutation,
@@ -175,6 +199,27 @@ export function useAgentMail() {
         )
       );
 
+      const targetThread = threads.find((t) => t.id === threadId);
+      if (targetThread) {
+        // Send via /api/agent-mail/send
+        fetch('/api/agent-mail/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: {
+              id: targetThread.eventId,
+              title: targetThread.eventTitle,
+              organizerName: targetThread.organizerName,
+              organizerEmail: targetThread.organizerEmail,
+            },
+            questionBody: text,
+            isReply: true,
+          }),
+        }).catch((err) => {
+          console.warn('⚠️ [AgentMail] Failed to send reply via API:', err);
+        });
+      }
+
       if (isConfigured && !threadId.startsWith('th-')) {
         // If it's a real Convex Id
         addMessageMutation({
@@ -190,7 +235,7 @@ export function useAgentMail() {
         });
       }
     },
-    [addMessageMutation, isConfigured, setLocalThreads]
+    [addMessageMutation, isConfigured, setLocalThreads, threads]
   );
 
   return {

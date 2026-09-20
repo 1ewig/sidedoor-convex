@@ -45,9 +45,11 @@ export function EventDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close modal backdrop"
         onClick={onClose}
-        className="fixed inset-0 bg-black/30 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-black/30 backdrop-blur-xs transition-opacity cursor-default border-none p-0 -z-10"
       />
 
       {/* Modal Surface */}
