@@ -110,11 +110,20 @@ export async function runHybridEventDiscovery(
     laneB_Candidates = await extractFromUnstructuredMarkdown(laneB_Pages, userPrompt, locationHint);
   }
 
+  console.log(
+    `[Pipeline] 🚦 Extraction complete: ${laneA_Candidates.length} from Lane A (structured), ${laneB_Candidates.length} from Lane B (unstructured).`
+  );
+
   const allCandidates = [...laneA_Candidates, ...laneB_Candidates].slice(0, MAX_PIPELINE_CANDIDATES);
 
+  console.log(`[Curator] ✨ Curating ${allCandidates.length} candidate events with Gemini...`);
   const curatorStart = Date.now();
   const curatedEvents = await curateCandidatesWithLLM(allCandidates, userPrompt, userCoordinates);
   const curationTimeSec = parseFloat(((Date.now() - curatorStart) / 1000).toFixed(2));
+
+  console.log(
+    `[Curator] 🎯 Curation complete in ${curationTimeSec}s: ${curatedEvents.length} events passed vibe threshold.`
+  );
 
   return {
     events: curatedEvents,

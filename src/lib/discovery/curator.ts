@@ -65,69 +65,73 @@ export async function curateCandidatesWithLLM(
   }
 
   const defaultAnchor: Coordinates = userCoordinates || { lat: 40.7128, lng: -73.95 };
-  const finalEvents: LocalEvent[] = [];
 
-  for (const cand of candidates) {
-    const curation = lookup.get(cand.id);
-    if (curation && curation.matchScore < 60) continue;
+  const curatedResults = await Promise.all(
+    candidates.map(async (cand): Promise<LocalEvent | null> => {
+      const curation = lookup.get(cand.id);
+      if (curation && curation.matchScore < 60) return null;
 
-    const eventCoords: Coordinates = cand.coordinates || defaultAnchor;
-    let distanceKm = 0;
+      const eventCoords: Coordinates = cand.coordinates || defaultAnchor;
+      let distanceKm = 0;
 
-    if (
-      userCoordinates &&
-      typeof userCoordinates.lat === 'number' &&
-      typeof userCoordinates.lng === 'number' &&
-      typeof eventCoords.lat === 'number' &&
-      typeof eventCoords.lng === 'number'
-    ) {
-      distanceKm = calculateHaversineDistanceKm(
-        userCoordinates.lat,
-        userCoordinates.lng,
-        eventCoords.lat,
-        eventCoords.lng
+      if (
+        userCoordinates &&
+        typeof userCoordinates.lat === 'number' &&
+        typeof userCoordinates.lng === 'number' &&
+        typeof eventCoords.lat === 'number' &&
+        typeof eventCoords.lng === 'number'
+      ) {
+        distanceKm = calculateHaversineDistanceKm(
+          userCoordinates.lat,
+          userCoordinates.lng,
+          eventCoords.lat,
+          eventCoords.lng
+        );
+      }
+
+      // Layer 1 validation: prefer a candidate that verifiably serves a real
+      // image, then order the validated winner first for the UI fallback walk.
+      // Candidate image HEAD validations execute concurrently across all candidates.
+      const rawImages = (cand.coverImages && cand.coverImages.length > 0
+        ? cand.coverImages
+        : cand.coverImage
+        ? [cand.coverImage]
+        : []
       );
-    }
+      const validatedImage = await pickValidatedImage(rawImages, 3);
+      const coverImages = validatedImage
+        ? [validatedImage, ...rawImages.filter((u) => u !== validatedImage)]
+        : rawImages;
 
-    // Layer 1 validation: prefer a candidate that verifiably serves a real
-    // image, then order the validated winner first for the UI fallback walk.
-    const rawImages = (cand.coverImages && cand.coverImages.length > 0
-      ? cand.coverImages
-      : cand.coverImage
-      ? [cand.coverImage]
-      : []
-    );
-    const validatedImage = await pickValidatedImage(rawImages, 3);
-    const coverImages = validatedImage
-      ? [validatedImage, ...rawImages.filter((u) => u !== validatedImage)]
-      : rawImages;
+      return {
+        id: toEventId(cand.id),
+        title: cand.title,
+        category: (curation?.category || cand.category || 'music') as EventCategory,
+        tagline: curation?.tagline || `Live at ${cand.venueName}`,
+        description: curation?.editorialOverview || cand.rawSnippet || `Gathering hosted at ${cand.venueName}.`,
+        venueName: cand.venueName,
+        address: cand.address,
+        distanceKm,
+        coordinates: eventCoords,
+        dateTime: cand.isoDate || new Date().toISOString(),
+        formattedDate: cand.formattedDate || 'This Weekend',
+        formattedTime: cand.formattedTime || '8:00 PM',
+        price: cand.price,
+        isFree: cand.isFree,
+        matchScore: curation?.matchScore || 85,
+        vibeTags: curation?.vibeTags || ['#Local', '#Culture', '#DIY'],
+        organizerName: cand.organizerName || cand.venueName,
+        organizerEmail: cand.organizerEmail || curation?.suggestedOrganizerEmail || '',
+        sourceUrl: cand.sourceUrl,
+        firecrawlExtractedAt: `Hybrid (${cand.sourceLane})`,
+        coverImage: coverImages[0],
+        coverImages,
+        outreachStatus: 'none',
+      };
+    })
+  );
 
-    finalEvents.push({
-      id: toEventId(cand.id),
-      title: cand.title,
-      category: (curation?.category || cand.category || 'music') as EventCategory,
-      tagline: curation?.tagline || `Live at ${cand.venueName}`,
-      description: curation?.editorialOverview || cand.rawSnippet || `Gathering hosted at ${cand.venueName}.`,
-      venueName: cand.venueName,
-      address: cand.address,
-      distanceKm,
-      coordinates: eventCoords,
-      dateTime: cand.isoDate || new Date().toISOString(),
-      formattedDate: cand.formattedDate || 'This Weekend',
-      formattedTime: cand.formattedTime || '8:00 PM',
-      price: cand.price,
-      isFree: cand.isFree,
-      matchScore: curation?.matchScore || 85,
-      vibeTags: curation?.vibeTags || ['#Local', '#Culture', '#DIY'],
-      organizerName: cand.organizerName || cand.venueName,
-      organizerEmail: cand.organizerEmail || curation?.suggestedOrganizerEmail || '',
-      sourceUrl: cand.sourceUrl,
-      firecrawlExtractedAt: `Hybrid (${cand.sourceLane})`,
-      coverImage: coverImages[0],
-      coverImages,
-      outreachStatus: 'none',
-    });
-  }
+  const finalEvents: LocalEvent[] = curatedResults.filter((e): e is LocalEvent => e !== null);
 
   return finalEvents.sort((a, b) => b.matchScore - a.matchScore);
 }

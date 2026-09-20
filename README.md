@@ -28,9 +28,15 @@ src/
 │   ├── main/
 │   │   ├── page.tsx            # Server entry point
 │   │   └── page.client.tsx     # Main Client Orchestrator (state coordinator)
-│   └── api/                    # Lightweight API route handlers (geocode, locate)
+│   └── api/
+│       ├── scout/route.ts      # Scout discovery endpoint (thin HTTP boundary)
+│       ├── img/route.ts        # Same-origin image proxy (hotlink shield + placeholder)
+│       ├── geocode/route.ts    # Nominatim forward/reverse geocoding
+│       └── locate/route.ts     # Browser geolocation → locality label
 ├── components/
-│   ├── layout/                 # Header & Ambient Canvas overlays
+│   ├── ui/                     # Atomic, dumb presentational primitives
+│   │   └── EventImage.tsx      # Resilient flyer renderer (walks candidates, placeholder)
+│   ├── layout/                 # Header & ambient canvas overlays
 │   │   ├── Header.tsx          # Top navigation bar & quick actions
 │   │   └── ShadowOverlay.tsx   # Atmospheric ambient shadow animations
 │   ├── location/               # Location picker & MapLibre GL
@@ -45,26 +51,43 @@ src/
 │       ├── ScoutFilterDrawer.tsx # Search radius, categories, & vibe tuning
 │       └── OutboxDrawer.tsx    # Two-way email outbox with venue organizers
 ├── hooks/                      # Business logic & side effects
-│   ├── useEventDiscovery.ts    # Filter & scout simulation logic
+│   ├── useEventDiscovery.ts    # Filter & scout trigger logic
 │   ├── useAgentMail.ts         # Outbox correspondence state & dispatch
-│   └── useUserLocation.ts      # Geolocation & reverse geocoding
+│   ├── useUserLocation.ts      # Geolocation & reverse geocoding
+│   ├── useLocationPinMap.ts    # MapLibre pin/radius side-effects
+│   └── useLockBodyScroll.ts    # Modal scroll locking
 ├── state/                      # Zustand persistent stores
-│   ├── useScoutFilterStore.ts  # Tuning filters (radius, category, minScore)
+│   ├── index.ts                # Barrel re-exports
+│   ├── useScoutFilterStore.ts  # Tuning filters (radius, category, minScore, mode)
 │   └── useLocationStore.ts     # Active user coordinates & locality label
 ├── types/                      # Shared TypeScript definitions
 │   ├── index.ts                # LocalEvent, Coordinates, EmailThread, etc.
 │   └── discovery.ts            # CandidateEvent, ScrapedPageInput, HybridDiscoveryResult
 └── lib/                        # Pure utilities & discovery pipeline
-    ├── discovery/              # Two-lane discovery modules (planner, deep-lane, curator, pipeline)
+    ├── discovery/              # Scout engine & two-lane hybrid pipeline
+    │   ├── scout-engine.ts     # Fast/Deep crawl orchestration + page normalization
+    │   ├── pipeline.ts         # Two-lane coordinator (Lane A + Lane B + curator)
+    │   ├── query-planner.ts    # Gemini Step 1 intent → 3 targeted queries (Deep mode)
+    │   ├── deep-lane.ts        # Lane B: Gemini unstructured markdown parser
+    │   ├── curator.ts          # Semantic curator (matchScore, vibeTags, distance)
+    │   ├── hub-resolver.ts     # Calendar-hub /map permalink deep-scraping
+    │   ├── firecrawl-schema.ts # Plain JSON Schemas for Firecrawl extraction
+    │   ├── prompts.ts          # Isolated system prompts (planner, deep-lane, curator)
+    │   ├── category.ts         # Unified category classifier (text + schema @type)
+    │   ├── filters.ts          # Pure event-vs-filter predicate
+    │   ├── config.ts           # Model name, budgets, API-key resolution
+    │   └── id.ts               # Monotonic candidate/event ID generation
+    ├── images.ts               # Image harvesting, de-junking & validation (Layer 1)
     ├── schema-org.ts           # Lane A deterministic JSON-LD extractor
     ├── temporal.ts             # Deterministic date anchoring
     ├── html.ts                 # Pure HTML entity cleaning
-    ├── geo.ts                  # Haversine distance calculator
+    ├── geo.ts                  # Haversine distance + GeoJSON circle helpers
     ├── animations.ts           # Framer motion presets
     └── mapStyle.ts             # MapLibre cartographic styling
 scripts/                        # Verification test suites
 ├── test-firecrawl.ts           # Web search, scrape & direct photo test
 ├── test-ai-queries.ts          # Step 1 Gemini intent expansion test
+├── test-fast-pipeline.ts       # Fast-mode single-pass crawl harness
 └── test-hybrid-pipeline.ts     # Two-lane hybrid scraping pipeline harness
 ```
 
@@ -101,35 +124,44 @@ Always use defined CSS custom properties:
 
 ---
 
-## 🚀 The 3-Step Discovery Pipeline (`src/lib/ai.ts`)
+## 🚀 The Scout Pipeline (`src/app/api/scout/route.ts` → `src/lib/discovery/`)
 
-SideDoor autonomously finds DIY gatherings through a 3-step pipeline:
+SideDoor autonomously finds DIY gatherings through a **dual-engine scout** feeding a **two-lane hybrid extraction pipeline**.
 
+### Scout Engines (`scout-engine.ts`)
+The `/api/scout` route is a thin HTTP boundary that validates env keys, then delegates crawling to `executeScoutCrawl()`:
+
+- **⚡ Fast mode** — a single laser-targeted Firecrawl search (`"<prompt> in <location> events calendar"`, limit 3) with markdown + rawHtml. No LLM query expansion. Lowest latency.
+- **🔬 Deep mode** — Gemini expands the intent into 3 targeted queries (venue calendars, markets/galleries, secret RSVPs), runs them in parallel with Firecrawl's JSON-schema extraction, then augments results by resolving event permalinks from detected calendar hubs (`hub-resolver.ts` via `/map` + parallel `/scrape`).
+
+All scraped pages are normalized by `normalizeScrapedPages()` into `ScrapedPageInput` (deduped URLs, harvested image candidates, optional extracted JSON).
+
+### Two-Lane Hybrid Extraction (`pipeline.ts`)
 ```
-[User Natural Prompt] ("intimate indie gigs or flea markets near Bushwick")
-          │
-          ▼
-1. Gemini 3.5 Flash Lite (`generateDiscoveryQueries`)
-   Transforms broad intent into 3 laser-targeted Firecrawl queries:
-   • Query 1: Specific Vibe & Genre calendar listings
-   • Query 2: Local community board & popup format
-   • Query 3: Underground ticket links (Luma, Dice, Linktree)
-          │
-          ▼
-2. Firecrawl Web Crawl (`@mendable/firecrawl-js`)
-   Searches the web, extracts metadata (`ogImage`), and turns raw venue HTML into clean markdown.
-          │
-          ▼
-3. Gemini 3.5 Flash Lite (`extractEventsFromMarkdown`)
-   Parses raw markdown into structured, UI-ready `LocalEvent` objects:
-   • title, category, tagline, description
-   • venueName, address, distanceKm, coordinates
-   • formattedDate, formattedTime, price, isFree
-   • matchScore (0–100% vibe match)
-   • vibeTags (#IndieRock, #DIY, #Bushwick)
-   • organizerName, organizerEmail (for AgentMail outreach)
-   • coverImage (event flyer / photo)
+[Scraped Pages]
+      │
+      ▼
+Lane A (deterministic)         Lane B (LLM fallback)
+schema-org.ts JSON-LD    OR    deep-lane.ts Gemini parse
++ Firecrawl JSON schema        (pages without structured data)
+      │                              │
+      └──────────┬───────────────────┘
+                 ▼
+      curator.ts (Gemini) — matchScore, tagline, editorial
+      overview, vibeTags, category, Haversine distance
+                 ▼
+      LocalEvent[] sorted by vibe-match score
 ```
+
+Each curated `LocalEvent` carries: `title, category, tagline, description`, `venueName, address, distanceKm, coordinates`, `formattedDate, formattedTime, price, isFree`, `matchScore` (0–100 vibe match), `vibeTags`, `organizerName/organizerEmail` (for AgentMail outreach), and `coverImage` + ranked `coverImages` (event flyers).
+
+### 🖼️ The Image System (4 layers)
+Event flyers come from untrusted third-party pages, so images flow through a hardened pipeline — the UI never shows a broken-image glyph:
+
+1. **Harvest & de-junk** (`lib/images.ts`) — builds a ranked candidate list per event (og:image → twitter:image → JSON-LD image → Firecrawl `imageUrl` → markdown images), resolving relative URLs to absolute and filtering trackers/icons/logos/SVGs.
+2. **Validate** (`curator.ts` + `pickValidatedImage`) — the top candidates are HEAD-checked server-side (200 + `image/*` + min byte size) so a verifiably real image leads the list.
+3. **Proxy shield** (`/api/img/route.ts`) — the browser loads images through the same-origin proxy with a neutral identity (no cross-origin Referer), defeating hotlink protection; failures return a transparent placeholder, never an error.
+4. **Resilient render** (`components/ui/EventImage.tsx`) — walks the ranked candidates on `onError`, shows a skeleton while loading, and falls back to a themed venue-initial placeholder when all candidates fail.
 
 ---
 
@@ -156,20 +188,23 @@ bun run test:firecrawl
 # Test Suite: Gemini Step 1 query generation
 bun run test:ai
 
+# Test Suite: Fast-mode single-pass crawl harness
+bun run test:fast
+
 # Test Suite: Two-lane hybrid scraping pipeline harness
 bun run test:hybrid
 ```
 
 ---
 
-## 🏛️ Architecture Patterns for Agents
+## Architecture Patterns for Agents
 
 1. **Strict Separation of Concerns**:
-   - UI components (`EventCard`, `DiscoveredFeed`, `Header`) are dumb, presentational, and consume pure props.
+   - UI components (`EventCard`, `DiscoveredFeed`, `Header`) are dumb, presentational, and consume pure props. Reusable dumb primitives live in `components/ui` (e.g. `EventImage` for resilient flyer rendering).
    - Business logic, state, and side-effects reside inside custom hooks (`useEventDiscovery`, `useAgentMail`, `useUserLocation`).
+   - The discovery engine is a thin API boundary (`/api/scout`) over pure, testable modules in `lib/discovery` - crawl (`scout-engine`), extraction (`schema-org`, `deep-lane`), curation (`curator`), and shared helpers (`category`, `filters`, `prompts`, `images`).
 2. **The Page Client Orchestrator Pattern**:
    - `src/app/main/page.tsx` is the server boundary.
    - `src/app/main/page.client.tsx` coordinates state, hooks, and delegates rendering to dumb feature components.
 3. **Always Verify**:
    - After making changes, always run `bun run lint` and `bunx tsc --noEmit`.
-

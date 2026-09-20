@@ -45,7 +45,7 @@ export function useEventDiscovery() {
           ? locationLabel
           : 'Brooklyn / New York City';
 
-      console.groupCollapsed(
+      console.group(
         `%c🚦 [SideDoor Scout] Scouting: "${promptText}"`,
         'color: #d97706; font-weight: bold; font-size: 13px;'
       );
@@ -56,6 +56,7 @@ export function useEventDiscovery() {
         minScore: `${filters.minScore}%`,
         category: filters.category,
         onlyFree: filters.onlyFree,
+        mode: filters.scoutMode,
       });
 
       // Step 1: Query generation notice

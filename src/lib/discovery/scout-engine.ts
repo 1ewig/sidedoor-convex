@@ -84,6 +84,8 @@ export async function executeScoutCrawl({
     const laserQuery = `${prompt} in ${location} events calendar`;
     queriesUsed = [laserQuery];
 
+    console.log(`[ScoutEngine] ⚡ Fast single-pass search: "${laserQuery}"`);
+
     const searchRes = await firecrawl.search(laserQuery, {
       limit: 3,
       location,
@@ -102,6 +104,8 @@ export async function executeScoutCrawl({
     const queryResult = await generateDiscoveryQueries(prompt, location);
     queriesUsed = queryResult.queries;
     vibeTags = queryResult.vibeTags;
+
+    console.log(`[ScoutEngine] 🔬 Deep crawl angles:\n${queriesUsed.map((q, i) => `  ${i + 1}. ${q}`).join('\n')}`);
 
     const searchSettled = await Promise.allSettled(
       queriesUsed.map((q) =>
@@ -152,6 +156,8 @@ export async function executeScoutCrawl({
       console.warn('[ScoutEngine] Hub permalink resolution warning:', hubErr?.message || hubErr);
     }
   }
+
+  console.log(`[ScoutEngine] 📄 Crawl complete: ${allScrapedPages.length} unique pages ingested.`);
 
   return {
     allScrapedPages,
