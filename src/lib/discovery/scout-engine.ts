@@ -1,7 +1,7 @@
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { ScrapedPageInput, ScoutEngineMode } from '@/types';
 import { harvestImageCandidates } from '../images';
-import { refineScoutQuery } from './pipeline';
+import { refineScoutQuery } from './query-refiner';
 
 // ---------------------------------------------------------------------------
 // Junk Page Filter
