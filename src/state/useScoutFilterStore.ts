@@ -7,7 +7,7 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilterState = {
   radiusKm: 20,
   category: 'all',
   onlyFree: false,
-  minScore: 80,
+  minScore: 70,
   scoutMode: 'fast',
   when: 'this weekend',
 };

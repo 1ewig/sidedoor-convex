@@ -7,6 +7,8 @@ import { getTemporalContext } from '../temporal';
 import { createCandidateId } from './id';
 import { inferEventCategory } from './category';
 import { toAbsoluteImageUrl } from '../images';
+import { mineListingEvents, isListingPage } from './mining';
+import { dedupeAndRankCandidates } from './dedupe';
 
 function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] {
   if (!page.extractedJson) return [];
@@ -69,10 +71,11 @@ function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] 
 /**
  * Master coordinator: runs the two-lane hybrid discovery pipeline.
  *
- * 1. Lane A — deterministic Schema.org JSON-LD extraction & Firecrawl structured JSON (0 extra LLM cost)
+ * 1. Lane A — deterministic Schema.org JSON-LD extraction, Firecrawl structured JSON & Heuristic Snippet Mining (0 extra LLM cost)
  * 2. Lane B — Gemini deep-lane fallback for pages without structured data
- * 3. Semantic curator — LLM enrichment (matchScore, vibeTags, tagline)
- * 4. Haversine distance enrichment against real user coordinates
+ * 3. Cross-Domain Deduplication & Richness Merging
+ * 4. Semantic curator — LLM enrichment (matchScore, vibeTags, tagline)
+ * 5. Haversine distance enrichment against real user coordinates
  */
 export async function runHybridEventDiscovery(
   scrapedPages: ScrapedPageInput[],
@@ -85,7 +88,7 @@ export async function runHybridEventDiscovery(
   const laneA_Candidates: CandidateEvent[] = [];
   const laneB_Pages: ScrapedPageInput[] = [];
 
-  // Dispatch pages: use Schema.org and Firecrawl JSON if present, else fallback to Lane B
+  // Dispatch pages: use Schema.org, Firecrawl JSON, and Listing Snippet mining
   for (const page of scrapedPages) {
     const rawContent = page.rawHtml || '';
     const structured = extractStructuredEventsFromHtml(
@@ -97,24 +100,38 @@ export async function runHybridEventDiscovery(
 
     const firecrawlStructured = parseFirecrawlJsonCandidates(page);
 
-    if (structured.length > 0 || firecrawlStructured.length > 0) {
-      laneA_Candidates.push(...structured, ...firecrawlStructured);
+    // Heuristic snippet mining for calendar/directory listing aggregators
+    let minedCandidates: CandidateEvent[] = [];
+    if (structured.length === 0 || isListingPage(page.url, page.title)) {
+      minedCandidates = mineListingEvents(page, 6);
+    }
+
+    if (structured.length > 0 || firecrawlStructured.length > 0 || minedCandidates.length > 0) {
+      laneA_Candidates.push(...structured, ...firecrawlStructured, ...minedCandidates);
     } else {
       laneB_Pages.push(page);
     }
   }
 
-  // Process Lane B if any pages lacked JSON-LD
+  // Process Lane B if any pages lacked JSON-LD or mined items
   let laneB_Candidates: CandidateEvent[] = [];
   if (laneB_Pages.length > 0) {
     laneB_Candidates = await extractFromUnstructuredMarkdown(laneB_Pages, userPrompt, locationHint);
   }
 
   console.log(
-    `[Pipeline] 🚦 Extraction complete: ${laneA_Candidates.length} from Lane A (structured), ${laneB_Candidates.length} from Lane B (unstructured).`
+    `[Pipeline] 🚦 Raw extraction complete: ${laneA_Candidates.length} from Lane A (structured/mined), ${laneB_Candidates.length} from Lane B (unstructured).`
   );
 
-  const allCandidates = [...laneA_Candidates, ...laneB_Candidates].slice(0, MAX_PIPELINE_CANDIDATES);
+  // Cross-domain fuzzy deduplication and data-richness merging
+  const rawPool = [...laneA_Candidates, ...laneB_Candidates];
+  const deduplicatedPool = dedupeAndRankCandidates(rawPool);
+
+  const allCandidates = deduplicatedPool.slice(0, MAX_PIPELINE_CANDIDATES);
+
+  console.log(
+    `[Pipeline] 🧬 Deduplication merged ${rawPool.length} raw candidates → ${deduplicatedPool.length} unique candidates (Top ${allCandidates.length} selected for curation).`
+  );
 
   console.log(`[Curator] ✨ Curating ${allCandidates.length} candidate events with Gemini...`);
   const curatorStart = Date.now();
@@ -134,4 +151,4 @@ export async function runHybridEventDiscovery(
       curationTimeSec,
     },
   };
-}
+}

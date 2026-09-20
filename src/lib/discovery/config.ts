@@ -5,7 +5,7 @@
 export const SIDEDOOR_MODEL = 'gemini-3.5-flash-lite';
 
 /** Upper bound on candidates fed into the semantic curator per scout run. */
-export const MAX_PIPELINE_CANDIDATES = 8;
+export const MAX_PIPELINE_CANDIDATES = 25;
 
 /** Per-page markdown character budget sent to the deep-lane extractor. */
 export const MARKDOWN_EXCERPT_LIMIT = 15000;

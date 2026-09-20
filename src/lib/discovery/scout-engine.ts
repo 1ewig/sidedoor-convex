@@ -7,10 +7,11 @@ import {
   FIRECRAWL_EVENT_EXTRACTION_PROMPT,
 } from './firecrawl-schema';
 import { harvestImageCandidates } from '../images';
+import { isJunkPage } from './mining';
 
 /**
  * Normalizes raw Firecrawl search items into typed ScrapedPageInput objects.
- * Handles deduplication, ogImage resolution, and markdown flyer fallback.
+ * Handles deduplication, junk page filtering, ogImage resolution, and markdown flyer fallback.
  */
 export function normalizeScrapedPages(
   rawItems: any[],
@@ -20,10 +21,17 @@ export function normalizeScrapedPages(
 
   for (const item of rawItems) {
     if (!item?.url || seenUrls.has(item.url)) continue;
-    seenUrls.add(item.url);
-
+    
+    const title = item.title || item.metadata?.title || 'Event Calendar Listing';
     const markdown = item.markdown || '';
     const rawHtml = item.rawHtml || item.html || '';
+
+    // Filter out low-value utility / junk pages deterministically
+    if (isJunkPage(item.url, title, markdown.slice(0, 300))) {
+      continue;
+    }
+
+    seenUrls.add(item.url);
 
     // Harvest a ranked, de-junked, absolute candidate list (Layer 1)
     const imageCandidates = harvestImageCandidates({
@@ -39,7 +47,7 @@ export function normalizeScrapedPages(
 
     pages.push({
       url: item.url,
-      title: item.title || item.metadata?.title || 'Event Calendar Listing',
+      title,
       markdown,
       rawHtml,
       ogImage: flyerImage,
@@ -64,6 +72,32 @@ export interface ScoutCrawlResult {
   allScrapedPages: ScrapedPageInput[];
   queriesUsed: string[];
   vibeTags: string[];
+}
+
+/** Helper for sleep */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Executes a resilient search via Firecrawl with 429 backoff retry.
+ */
+async function searchWithBackoff(
+  firecrawl: FirecrawlApp,
+  query: string,
+  options: any,
+  maxRetries = 2
+): Promise<any> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await firecrawl.search(query, options);
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      const isRetryable = msg.includes('429') || msg.includes('rate limit') || msg.includes('500');
+      if (attempt === maxRetries || !isRetryable) throw err;
+      const waitMs = 1500 * 2 ** attempt + Math.random() * 500;
+      console.warn(`[ScoutEngine] ⚠️ Firecrawl search hit ${msg}, retrying in ${Math.round(waitMs)}ms...`);
+      await sleep(waitMs);
+    }
+  }
 }
 
 /**
@@ -95,8 +129,8 @@ export async function executeScoutCrawl({
       `[ScoutEngine] ⚡ Fast single-pass search: "${laserQuery}" [Country: ${targetCountry}]`
     );
 
-    const searchRes = await firecrawl.search(laserQuery, {
-      limit: 3,
+    const searchRes = await searchWithBackoff(firecrawl, laserQuery, {
+      limit: 4,
       location,
       country: targetCountry,
       scrapeOptions: {
