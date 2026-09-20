@@ -11,8 +11,9 @@ import {
   Gauge,
   Tag,
   Ticket,
+  Calendar,
 } from 'lucide-react';
-import { SearchFilterState, EventCategory } from '@/types';
+import { SearchFilterState, EventCategory, ScoutTimeFilter } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
@@ -39,6 +40,14 @@ const CATEGORIES: { id: string; label: string }[] = [
   { id: 'nightlife', label: 'Nightlife' },
   { id: 'food', label: 'Food & Wine' },
   { id: 'community', label: 'Community' },
+];
+
+const TIME_FILTERS: { id: ScoutTimeFilter; label: string; hint: string }[] = [
+  { id: 'this weekend', label: 'This Weekend', hint: 'Fri – Sun' },
+  { id: 'today', label: 'Tonight / Today', hint: 'Next 24h' },
+  { id: 'this week', label: 'This Week', hint: 'Next 7 days' },
+  { id: 'this month', label: 'This Month', hint: 'Next 30 days' },
+  { id: 'anytime', label: 'Anytime', hint: 'All upcoming' },
 ];
 
 function Toggle({
@@ -154,6 +163,44 @@ export function ScoutFilterDrawer({
               {/* Group: Discovery Rules */}
               <div className="space-y-6">
                 <GroupLabel>Discovery Rules</GroupLabel>
+
+                {/* Time Window */}
+                <div className="space-y-2.5">
+                  <div className="flex justify-between items-baseline gap-3">
+                    <span className="flex items-center gap-1.5 text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] font-sans">
+                      <Calendar className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
+                      Time Window
+                    </span>
+                    <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-primary)] font-medium capitalize whitespace-nowrap">
+                      {filters.when || 'this weekend'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-1 bg-[var(--theme-bg-base)] rounded-xl border border-[var(--theme-border-subtle)]">
+                    {TIME_FILTERS.map((tf) => {
+                      const isSelected = (filters.when || 'this weekend') === tf.id;
+                      return (
+                        <button
+                          key={tf.id}
+                          type="button"
+                          onClick={() => onUpdateFilters({ when: tf.id })}
+                          aria-pressed={isSelected}
+                          className={`py-2 px-2 rounded-lg transition cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 ${
+                            isSelected
+                              ? 'bg-[var(--theme-bg-surface)] text-[var(--theme-text-primary)] shadow-xs font-semibold'
+                              : 'text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)]'
+                          }`}
+                        >
+                          <span className="block text-[var(--text-2xs)] font-sans">
+                            {tf.label}
+                          </span>
+                          <span className="block text-[9px] font-sans opacity-70">
+                            {tf.hint}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 {/* Search Radius */}
                 <div className="space-y-2.5">

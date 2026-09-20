@@ -56,6 +56,8 @@ export interface ScoutCrawlOptions {
   location: string;
   mode: ScoutEngineMode;
   firecrawlKey: string;
+  country?: string;
+  when?: string;
 }
 
 export interface ScoutCrawlResult {
@@ -72,6 +74,8 @@ export async function executeScoutCrawl({
   location,
   mode,
   firecrawlKey,
+  country,
+  when,
 }: ScoutCrawlOptions): Promise<ScoutCrawlResult> {
   const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
   const seenUrls = new Set<string>();
@@ -79,17 +83,22 @@ export async function executeScoutCrawl({
   let queriesUsed: string[] = [];
   let vibeTags: string[] = [];
 
+  const targetCountry = country || process.env.FIRECRAWL_COUNTRY || 'US';
+  const timeSuffix = when && when !== 'anytime' ? ` ${when}` : '';
+
   if (mode === 'fast') {
     // ⚡ Fast Scout Engine: Laser single-pass search without heavy LLM JSON schema
-    const laserQuery = `${prompt} in ${location} events calendar`;
+    const laserQuery = `${prompt} in ${location} events calendar${timeSuffix}`;
     queriesUsed = [laserQuery];
 
-    console.log(`[ScoutEngine] ⚡ Fast single-pass search: "${laserQuery}"`);
+    console.log(
+      `[ScoutEngine] ⚡ Fast single-pass search: "${laserQuery}" [Country: ${targetCountry}]`
+    );
 
     const searchRes = await firecrawl.search(laserQuery, {
       limit: 3,
       location,
-      country: 'US',
+      country: targetCountry,
       scrapeOptions: {
         formats: ['rawHtml', 'markdown'],
         onlyMainContent: true,
@@ -105,14 +114,18 @@ export async function executeScoutCrawl({
     queriesUsed = queryResult.queries;
     vibeTags = queryResult.vibeTags;
 
-    console.log(`[ScoutEngine] 🔬 Deep crawl angles:\n${queriesUsed.map((q, i) => `  ${i + 1}. ${q}`).join('\n')}`);
+    console.log(
+      `[ScoutEngine] 🔬 Deep crawl angles [Country: ${targetCountry}]:\n${queriesUsed
+        .map((q, i) => `  ${i + 1}. ${q}${timeSuffix}`)
+        .join('\n')}`
+    );
 
     const searchSettled = await Promise.allSettled(
       queriesUsed.map((q) =>
-        firecrawl.search(q, {
+        firecrawl.search(timeSuffix ? `${q}${timeSuffix}` : q, {
           limit: 2,
           location,
-          country: 'US',
+          country: targetCountry,
           scrapeOptions: {
             formats: [
               'markdown',

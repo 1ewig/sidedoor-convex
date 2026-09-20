@@ -13,7 +13,8 @@
     "test:fast": "bun run scripts/test-fast-pipeline.ts",
     "test:hybrid": "bun run scripts/test-hybrid-pipeline.ts",
     "convex:dev": "bunx convex dev",
-    "convex:codegen": "bunx convex codegen"
+    "convex:codegen": "bunx convex codegen",
+    "scout:cli": "bun run scripts/test-search-cli.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.75",

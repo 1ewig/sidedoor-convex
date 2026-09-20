@@ -9,6 +9,7 @@ interface LocateResponse {
   city?: string;
   region?: string;
   country?: string;
+  countryCode?: string;
   source: 'ip' | 'default';
 }
 
@@ -65,6 +66,7 @@ export async function GET(req: NextRequest) {
           city,
           region,
           country,
+          countryCode: (data.country_code || '').toUpperCase() || undefined,
           source: 'ip',
         };
 
@@ -98,6 +100,7 @@ export async function GET(req: NextRequest) {
           city,
           region,
           country,
+          countryCode: (data2.countryCode || '').toUpperCase() || undefined,
           source: 'ip',
         });
       }
@@ -111,6 +114,7 @@ export async function GET(req: NextRequest) {
     {
       label: 'Sialkot, Punjab',
       coordinates: { lat: 32.4927, lng: 74.5313 },
+      countryCode: 'PK',
       source: 'default',
     },
     { status: 200 }

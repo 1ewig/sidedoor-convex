@@ -108,6 +108,7 @@ export const useLocationStore = create<LocationState>()(
                     location: {
                       label: data.label,
                       coordinates: coords,
+                      countryCode: data.countryCode,
                     },
                     isUserExplicit: true,
                     isLocating: false,
@@ -145,6 +146,7 @@ export const useLocationStore = create<LocationState>()(
                   location: {
                     label: data.label,
                     coordinates: data.coordinates,
+                    countryCode: data.countryCode,
                   },
                   isUserExplicit: true,
                   isLocating: false,
@@ -184,6 +186,7 @@ export const useLocationStore = create<LocationState>()(
                   location: {
                     label: data.label,
                     coordinates: data.coordinates,
+                    countryCode: data.countryCode,
                   },
                   error: null,
                 });

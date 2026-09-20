@@ -49,10 +49,13 @@ export async function GET(req: NextRequest) {
           label = `${numLat.toFixed(3)}°N, ${numLng.toFixed(3)}°E`;
         }
 
+        const countryCode = (addr.country_code || '').toUpperCase() || undefined;
+
         return NextResponse.json({
           label,
           fullAddress: data.display_name,
           coordinates: { lat: numLat, lng: numLng },
+          countryCode,
         });
       }
     } catch (err) {

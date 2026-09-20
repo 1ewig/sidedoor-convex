@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
     const location = body?.location?.trim() || 'Brooklyn / New York City';
     const userCoords = body?.coordinates as Coordinates | undefined;
     const mode = (body?.mode === 'deep' ? 'deep' : 'fast') as ScoutEngineMode;
+    const country = body?.country ? String(body.country).trim() : undefined;
+    const when = body?.when ? String(body.when).trim() : undefined;
 
     if (!prompt) {
       return NextResponse.json(
@@ -45,7 +47,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`\n[API /api/scout] === Scout Request [${mode.toUpperCase()}] "${prompt}" @ ${location} ===`);
+    console.log(
+      `\n[API /api/scout] === Scout Request [${mode.toUpperCase()}] "${prompt}" @ ${location} (Time: ${when || 'default'}, Country: ${country || 'auto'}) ===`
+    );
 
     // 1. Crawl & Ingest Web Pages
     const { allScrapedPages, queriesUsed, vibeTags } = await executeScoutCrawl({
@@ -53,6 +57,8 @@ export async function POST(req: NextRequest) {
       location,
       mode,
       firecrawlKey,
+      country,
+      when,
     });
 
     if (allScrapedPages.length === 0) {

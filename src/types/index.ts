@@ -66,6 +66,13 @@ export interface EmailThread {
 
 export type ScoutEngineMode = 'fast' | 'deep';
 
+export type ScoutTimeFilter =
+  | 'this weekend'
+  | 'today'
+  | 'this week'
+  | 'this month'
+  | 'anytime';
+
 export interface SearchFilterState {
   query: string;
   radiusKm: number;
@@ -73,11 +80,13 @@ export interface SearchFilterState {
   onlyFree: boolean;
   minScore: number;
   scoutMode: ScoutEngineMode;
+  when: ScoutTimeFilter;
 }
 
 export interface UserLocation {
   label: string;
   coordinates: Coordinates;
+  countryCode?: string;
 }
 
 export interface HybridDiscoveryStats {

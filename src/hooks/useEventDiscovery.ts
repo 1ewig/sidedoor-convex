@@ -16,6 +16,7 @@ export function useEventDiscovery() {
   const updateFilters = useScoutFilterStore((state) => state.updateFilters);
   const locationLabel = useLocationStore((state) => state.location.label);
   const userCoordinates = useLocationStore((state) => state.location.coordinates);
+  const countryCode = useLocationStore((state) => state.location.countryCode);
 
   const sessionId = useSessionStore((state) => state.sessionId);
   const { isConfigured } = useConvexConfig();
@@ -73,12 +74,14 @@ export function useEventDiscovery() {
       );
       console.log('📍 Location:', effectiveLocation);
       console.log('🌐 User Coordinates:', userCoordinates ?? 'Default (NYC fallback)');
+      console.log('🌍 Target Country:', countryCode || 'US (auto)');
       console.log('⚙️ Current Active Filters:', {
         radiusKm: `${filters.radiusKm} km`,
         minScore: `${filters.minScore}%`,
         category: filters.category,
         onlyFree: filters.onlyFree,
         mode: filters.scoutMode,
+        when: filters.when,
       });
 
       // Step 1: Query generation notice
@@ -87,7 +90,7 @@ export function useEventDiscovery() {
         id: `log-${Date.now()}-1`,
         timestamp: timeStr(),
         level: 'info',
-        message: `Agent scouting (${isFast ? '⚡ Fast' : '🔬 Deep'}): "${promptText}"`,
+        message: `Agent scouting (${isFast ? '⚡ Fast' : '🔬 Deep'} • ${filters.when}): "${promptText}"`,
       };
       setLogs((prev) => [startLog, ...prev]);
 
@@ -98,12 +101,12 @@ export function useEventDiscovery() {
           timestamp: timeStr(),
           level: 'scrape',
           message: isFast
-            ? '⚡ Fast single-pass scan of venue calendars & underground JSON-LD...'
-            : '🔬 Deep multi-angle crawl of DIY venues, Linktrees & flyer calendars...',
+            ? `⚡ Fast scan for ${filters.when} via venue calendars & JSON-LD...`
+            : `🔬 Deep multi-angle crawl for ${filters.when} across DIY venues & Linktrees...`,
         };
         setLogs((prev) => [crawlLog, ...prev]);
 
-        console.log(`🚀 Dispatching request to /api/scout [Mode: ${filters.scoutMode}]...`);
+        console.log(`🚀 Dispatching request to /api/scout [Mode: ${filters.scoutMode}, When: ${filters.when}]...`);
 
         const res = await fetch('/api/scout', {
           method: 'POST',
@@ -113,6 +116,8 @@ export function useEventDiscovery() {
             location: effectiveLocation,
             coordinates: userCoordinates,
             mode: filters.scoutMode,
+            when: filters.when,
+            country: countryCode,
           }),
         });
 
@@ -269,6 +274,7 @@ export function useEventDiscovery() {
       }
     },
     [
+      countryCode,
       filters,
       isConfigured,
       isScouting,
