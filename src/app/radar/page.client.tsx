@@ -180,7 +180,6 @@ export function RadarPageClient() {
       {/* Main Area Radar Content */}
       <main className="relative z-10 w-full flex-1">
         <RadarHero
-          totalCount={filteredEvents.length}
           locationLabel={location.label}
           radiusKm={radiusKm}
         />
