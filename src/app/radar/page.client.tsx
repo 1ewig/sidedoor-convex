@@ -12,18 +12,17 @@ import { calculateHaversineDistanceKm } from '@/lib/geo';
 import { ShadowOverlay } from '@/components/layout/ShadowOverlay';
 import { Header } from '@/components/layout/Header';
 import { RadarHero } from '@/components/radar/RadarHero';
-import { RadarFilterBar, RadarCategoryFilter } from '@/components/radar/RadarFilterBar';
+import { RadarFilterBar } from '@/components/radar/RadarFilterBar';
 import { RadarGrid } from '@/components/radar/RadarGrid';
 import { OutboxDrawer } from '@/components/drawers/OutboxDrawer';
 import { ScoutFilterDrawer } from '@/components/drawers/ScoutFilterDrawer';
 import { LocationPinModal } from '@/components/location/LocationPinModal';
 import { EventDetailModal } from '@/components/discovery/EventDetailModal';
 import { LocalEvent } from '@/types';
+import { matchesSearchFilters } from '@/lib/discovery/filters';
 
 export function RadarPageClient() {
-  const [activeCategory, setActiveCategory] = useState<RadarCategoryFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [onlyFree, setOnlyFree] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<LocalEvent | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -34,7 +33,7 @@ export function RadarPageClient() {
   const isFilterDrawerOpen = useScoutFilterStore((state) => state.isFilterDrawerOpen);
   const setFilterDrawerOpen = useScoutFilterStore((state) => state.setFilterDrawerOpen);
 
-  const radiusKm = filters.radiusKm || 25;
+  const radiusKm = filters.radiusKm || 20;
 
   const { isConfigured } = useConvexConfig();
   const localScoutedEvents = useEventStore((state) => state.scoutedEvents);
@@ -96,22 +95,12 @@ export function RadarPageClient() {
     });
   }, [allEvents, location.coordinates]);
 
-  // Strict Area Filter: Only show gatherings within the user's active area radius
+  // Apply ScoutFilterDrawer filters (radius, category, onlyFree, minScore) + search query
   const filteredEvents = useMemo(() => {
     return localizedEvents
       .filter((event) => {
-        // Area Distance Check: strictly limit to user's area
-        if (typeof event.distanceKm === 'number' && event.distanceKm > radiusKm) {
-          return false;
-        }
-
-        // Category Filter
-        if (activeCategory !== 'all' && event.category.toLowerCase() !== activeCategory.toLowerCase()) {
-          return false;
-        }
-
-        // Free Only Filter
-        if (onlyFree && !event.isFree) {
+        // Evaluate against active ScoutFilterDrawer settings
+        if (!matchesSearchFilters(event, filters)) {
           return false;
         }
 
@@ -137,7 +126,7 @@ export function RadarPageClient() {
         }
         return b.matchScore - a.matchScore;
       });
-  }, [localizedEvents, radiusKm, activeCategory, onlyFree, searchQuery]);
+  }, [localizedEvents, filters, searchQuery]);
 
   const handleSendAgentMail = (event: LocalEvent) => {
     sendEventInquiry(event);
@@ -151,9 +140,8 @@ export function RadarPageClient() {
   };
 
   const handleResetFilters = () => {
-    setActiveCategory('all');
     setSearchQuery('');
-    setOnlyFree(false);
+    resetFilters();
   };
 
   const isLoading = isConfigured && convexEvents === undefined;
@@ -185,12 +173,10 @@ export function RadarPageClient() {
         />
 
         <RadarFilterBar
-          activeCategory={activeCategory}
-          onSelectCategory={setActiveCategory}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onlyFree={onlyFree}
-          onToggleFree={() => setOnlyFree((prev) => !prev)}
+          filters={filters}
+          onOpenTuning={() => setFilterDrawerOpen(true)}
           filteredCount={filteredEvents.length}
         />
 

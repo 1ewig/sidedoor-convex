@@ -1,91 +1,84 @@
 'use client';
 
-import { Search, Sparkles } from 'lucide-react';
-import { EventCategory } from '@/types';
-
-export type RadarCategoryFilter = EventCategory | 'all';
+import { Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { SearchFilterState } from '@/types';
 
 interface RadarFilterBarProps {
-  activeCategory: RadarCategoryFilter;
-  onSelectCategory: (category: RadarCategoryFilter) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onlyFree: boolean;
-  onToggleFree: () => void;
+  filters: SearchFilterState;
+  onOpenTuning: () => void;
   filteredCount: number;
 }
 
-const CATEGORIES: { id: RadarCategoryFilter; label: string }[] = [
-  { id: 'all', label: 'All Gatherings' },
-  { id: 'music', label: 'Indie & Live Music' },
-  { id: 'art', label: 'Galleries & Art' },
-  { id: 'nightlife', label: 'Underground & DJ' },
-  { id: 'market', label: 'Vintage & Fleas' },
-  { id: 'food', label: 'Pop-ups & Culinary' },
-  { id: 'community', label: 'DIY & Spaces' },
-];
-
 export function RadarFilterBar({
-  activeCategory,
-  onSelectCategory,
   searchQuery,
   onSearchChange,
-  onlyFree,
-  onToggleFree,
+  filters,
+  onOpenTuning,
   filteredCount,
 }: RadarFilterBarProps) {
+  const isCustomized =
+    filters.category !== 'all' ||
+    filters.onlyFree ||
+    filters.minScore !== 80 ||
+    filters.radiusKm !== 20;
+
   return (
-    <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 mb-8 space-y-4">
-      {/* Search Input and Free Toggle */}
-      <div className="flex flex-col sm:flex-row items-center gap-3">
+    <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 mb-8 space-y-3">
+      {/* Search Input and Tuning Drawer Trigger */}
+      <div className="flex items-center gap-3">
         <div className="relative w-full flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--theme-text-muted)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search by venue, artist, city, or vibe tags (e.g. ambient, vinyl, rooftop)..."
+            placeholder="Search by venue, artist, vibe tags, or keyword..."
             className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] focus:border-[var(--theme-border-strong)] text-[var(--text-xs)] text-[var(--theme-text-primary)] placeholder:text-[var(--theme-text-muted)] shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 transition-all"
           />
         </div>
 
         <button
           type="button"
-          onClick={onToggleFree}
-          className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-[var(--text-xs)] font-medium border transition-all cursor-pointer ${
-            onlyFree
-              ? 'bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] border-[var(--theme-text-primary)] shadow-xs'
-              : 'bg-[var(--theme-bg-surface)] text-[var(--theme-text-secondary)] border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)]'
-          }`}
+          onClick={onOpenTuning}
+          className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)] hover:bg-[var(--theme-bg-elevated)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Free Only</span>
+          <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
+          <span>Tuning</span>
+          {isCustomized && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-brand-primary)]" />
+          )}
         </button>
       </div>
 
-      {/* Category Horizontal Filter Pills */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full">
-          {CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => onSelectCategory(cat.id)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[var(--text-xs)] font-medium transition-all duration-150 cursor-pointer ${
-                  isActive
-                    ? 'bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] font-semibold shadow-xs'
-                    : 'bg-[var(--theme-bg-surface)]/80 text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] border border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)]'
-                }`}
-              >
-                {cat.label}
-              </button>
-            );
-          })}
+      {/* Active Filter Indicators & Result Count */}
+      <div className="flex items-center justify-between gap-3 flex-wrap pt-1 text-[var(--text-xs)]">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {filters.category !== 'all' && (
+            <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-secondary)] uppercase">
+              {filters.category}
+            </span>
+          )}
+          {filters.radiusKm && (
+            <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
+              ≤{filters.radiusKm} km
+            </span>
+          )}
+          {filters.onlyFree && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-secondary)]">
+              <Sparkles className="w-2.5 h-2.5" />
+              Free only
+            </span>
+          )}
+          {filters.minScore > 70 && (
+            <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
+              {filters.minScore}%+ match
+            </span>
+          )}
         </div>
 
-        <span className="font-mono text-[var(--text-2xs)] text-[var(--theme-text-muted)] shrink-0">
+        <span className="font-mono text-[var(--text-2xs)] text-[var(--theme-text-muted)] shrink-0 ml-auto">
           Showing {filteredCount} {filteredCount === 1 ? 'gathering' : 'gatherings'}
         </span>
       </div>
