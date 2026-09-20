@@ -13,7 +13,7 @@ export interface LocalEvent {
   description: string;
   venueName: string;
   address: string;
-  distanceKm: number;
+  distanceKm?: number;
   coordinates: Coordinates;
   dateTime: string;
   formattedDate: string;

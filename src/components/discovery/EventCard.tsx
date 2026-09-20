@@ -88,10 +88,14 @@ export function EventCard({ event, onSelect }: EventCardProps) {
           <span className="truncate text-[var(--theme-text-secondary)]">
             {event.venueName}
           </span>
-          <span>·</span>
-          <span className="font-mono text-[11px] shrink-0">
-            {event.distanceKm} km
-          </span>
+          {typeof event.distanceKm === 'number' && (
+            <>
+              <span>·</span>
+              <span className="font-mono text-[11px] shrink-0">
+                {event.distanceKm} km
+              </span>
+            </>
+          )}
         </div>
 
         <div className="shrink-0 text-[11px] font-mono text-[var(--theme-text-muted)]">

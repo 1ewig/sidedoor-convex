@@ -606,28 +606,40 @@ For each candidate:
     lookup.set(item.candidateId, item);
   }
 
-  const defaultAnchor: Coordinates = userCoordinates || { lat: 40.7128, lng: -73.95 };
-
   const curatedResults = await Promise.all(
     candidates.map(async (cand): Promise<LocalEvent | null> => {
       const curation = lookup.get(cand.id);
       if (curation && curation.matchScore < 60) return null;
 
-      const eventCoords: Coordinates = cand.coordinates || defaultAnchor;
-      let distanceKm = 0;
+      const hasCandCoords =
+        cand.coordinates &&
+        typeof cand.coordinates.lat === 'number' &&
+        typeof cand.coordinates.lng === 'number' &&
+        !isNaN(cand.coordinates.lat) &&
+        !isNaN(cand.coordinates.lng) &&
+        (cand.coordinates.lat !== 0 || cand.coordinates.lng !== 0);
 
-      if (
+      const hasUserCoords =
         userCoordinates &&
         typeof userCoordinates.lat === 'number' &&
         typeof userCoordinates.lng === 'number' &&
-        typeof eventCoords.lat === 'number' &&
-        typeof eventCoords.lng === 'number'
-      ) {
+        !isNaN(userCoordinates.lat) &&
+        !isNaN(userCoordinates.lng);
+
+      const eventCoords: Coordinates = hasCandCoords
+        ? cand.coordinates!
+        : hasUserCoords
+        ? userCoordinates!
+        : { lat: 0, lng: 0 };
+
+      let distanceKm: number | undefined = undefined;
+
+      if (hasUserCoords && hasCandCoords) {
         distanceKm = calculateHaversineDistanceKm(
-          userCoordinates.lat,
-          userCoordinates.lng,
-          eventCoords.lat,
-          eventCoords.lng
+          userCoordinates!.lat,
+          userCoordinates!.lng,
+          cand.coordinates!.lat,
+          cand.coordinates!.lng
         );
       }
 

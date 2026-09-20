@@ -62,8 +62,12 @@ export function EventDetailModal({
             </span>
             <span>·</span>
             <span>{event.matchScore}% match</span>
-            <span>·</span>
-            <span>{event.distanceKm} km away</span>
+            {typeof event.distanceKm === 'number' && (
+              <>
+                <span>·</span>
+                <span>{event.distanceKm} km away</span>
+              </>
+            )}
           </div>
 
           <button
