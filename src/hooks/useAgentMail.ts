@@ -1,16 +1,40 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { useConvexConfig } from '@/components/providers/ConvexClientProvider';
+import { useSessionStore } from '@/state/useSessionStore';
 import { EmailThread, EmailMessage, LocalEvent } from '@/types';
 
 export function useAgentMail() {
-  const [threads, setThreads] = useState<EmailThread[]>([]);
+  const [localThreads, setLocalThreads] = useState<EmailThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isMailModalOpen, setIsMailModalOpen] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
 
-  const selectedThread = threads.find((t) => t.id === selectedThreadId) || null;
+  const sessionId = useSessionStore((state) => state.sessionId);
+  const { isConfigured } = useConvexConfig();
+  const convexThreads = useQuery(
+    api.threads.list,
+    isConfigured && sessionId ? { sessionId } : 'skip'
+  );
+  const createInquiryMutation = useMutation(api.threads.createInquiry);
+  const addMessageMutation = useMutation(api.threads.addMessage);
 
+  // Derive threads combining Convex reactive data with local optimistic state
+  const threads = useMemo(() => {
+    if (convexThreads && Array.isArray(convexThreads) && convexThreads.length > 0) {
+      const convexMapped = convexThreads as unknown as EmailThread[];
+      const existingIds = new Set(convexMapped.map((t) => t.id));
+      const pendingLocal = localThreads.filter((t) => !existingIds.has(t.id));
+      return [...pendingLocal, ...convexMapped];
+    }
+    return localThreads;
+  }, [convexThreads, localThreads]);
+
+  const selectedThread = threads.find((t) => t.id === selectedThreadId) || null;
   const unreadCount = threads.filter((t) => t.status === 'responded').length;
 
   // Send an automated inquiry for an event
@@ -36,7 +60,7 @@ export function useAgentMail() {
       const existingThread = threads.find((t) => t.eventId === event.id);
 
       if (existingThread) {
-        setThreads((prev) =>
+        setLocalThreads((prev) =>
           prev.map((t) =>
             t.id === existingThread.id
               ? {
@@ -62,8 +86,24 @@ export function useAgentMail() {
           messages: [newOutboundMessage],
         };
 
-        setThreads((prev) => [newThread, ...prev]);
+        setLocalThreads((prev) => [newThread, ...prev]);
         setSelectedThreadId(newThread.id);
+      }
+
+      // Sync to Convex if configured
+      if (isConfigured) {
+        createInquiryMutation({
+          sessionId,
+          eventId: event.id,
+          eventTitle: event.title,
+          organizerName: event.organizerName,
+          organizerEmail: event.organizerEmail,
+          agentEmail: 'scout-alpha@sidedoor.agentmail.to',
+          subject: `Inquiry: ${event.title}`,
+          questionBody,
+        }).catch((err: unknown) => {
+          console.warn('⚠️ [Convex] Failed to persist inquiry:', err);
+        });
       }
 
       setIsSending(false);
@@ -81,7 +121,7 @@ export function useAgentMail() {
           sentAt: 'Just now',
         };
 
-        setThreads((prev) =>
+        setLocalThreads((prev) =>
           prev.map((t) =>
             t.eventId === event.id
               ? {
@@ -95,32 +135,50 @@ export function useAgentMail() {
         );
       }, 3500);
     },
-    [threads]
+    [createInquiryMutation, isConfigured, sessionId, threads]
   );
 
-  const replyToThread = useCallback((threadId: string, text: string) => {
-    const newMsg: EmailMessage = {
-      id: `msg-${Date.now()}`,
-      sender: 'agent',
-      senderName: 'You (via SideDoor)',
-      senderEmail: 'scout-alpha@sidedoor.agentmail.to',
-      subject: 'Re: Inquiry',
-      body: text,
-      sentAt: 'Just now',
-    };
+  const replyToThread = useCallback(
+    (threadId: string, text: string) => {
+      const newMsg: EmailMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'agent',
+        senderName: 'You (via SideDoor)',
+        senderEmail: 'scout-alpha@sidedoor.agentmail.to',
+        subject: 'Re: Inquiry',
+        body: text,
+        sentAt: 'Just now',
+      };
 
-    setThreads((prev) =>
-      prev.map((t) =>
-        t.id === threadId
-          ? {
-              ...t,
-              lastMessageAt: 'Just now',
-              messages: [...t.messages, newMsg],
-            }
-          : t
-      )
-    );
-  }, []);
+      setLocalThreads((prev) =>
+        prev.map((t) =>
+          t.id === threadId
+            ? {
+                ...t,
+                lastMessageAt: 'Just now',
+                messages: [...t.messages, newMsg],
+              }
+            : t
+        )
+      );
+
+      if (isConfigured && !threadId.startsWith('th-')) {
+        // If it's a real Convex Id
+        addMessageMutation({
+          threadId: threadId as Id<'threads'>,
+          sender: 'agent',
+          senderName: 'You (via SideDoor)',
+          senderEmail: 'scout-alpha@sidedoor.agentmail.to',
+          subject: 'Re: Inquiry',
+          body: text,
+          status: 'pending',
+        }).catch((err: unknown) => {
+          console.warn('⚠️ [Convex] Failed to save reply message:', err);
+        });
+      }
+    },
+    [addMessageMutation, isConfigured]
+  );
 
   return {
     threads,

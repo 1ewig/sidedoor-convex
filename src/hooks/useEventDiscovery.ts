@@ -1,17 +1,39 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useConvexConfig } from '@/components/providers/ConvexClientProvider';
+import { useSessionStore } from '@/state/useSessionStore';
 import { LocalEvent, ScoutLog, HybridDiscoveryStats } from '@/types';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { useLocationStore } from '@/state/useLocationStore';
 import { matchesSearchFilters } from '@/lib/discovery/filters';
 
 export function useEventDiscovery() {
-  const [events, setEvents] = useState<LocalEvent[]>([]);
+  const [scoutedEvents, setScoutedEvents] = useState<LocalEvent[]>([]);
   const filters = useScoutFilterStore((state) => state.filters);
   const updateFilters = useScoutFilterStore((state) => state.updateFilters);
   const locationLabel = useLocationStore((state) => state.location.label);
   const userCoordinates = useLocationStore((state) => state.location.coordinates);
+
+  const sessionId = useSessionStore((state) => state.sessionId);
+  const { isConfigured } = useConvexConfig();
+  const convexEvents = useQuery(api.events.list, isConfigured ? {} : 'skip');
+  const saveBatchMutation = useMutation(api.events.saveBatch);
+  const updateOutreachMutation = useMutation(api.events.updateOutreachStatus);
+  const logRunMutation = useMutation(api.scoutRuns.logRun);
+
+  // Derive merged event list reactively during render
+  const events = useMemo(() => {
+    if (!convexEvents || !Array.isArray(convexEvents) || convexEvents.length === 0) {
+      return scoutedEvents;
+    }
+    const convexMapped = convexEvents as unknown as LocalEvent[];
+    const existingIds = new Set(scoutedEvents.map((e) => e.id));
+    const uniqueConvex = convexMapped.filter((e) => !existingIds.has(e.id));
+    return [...scoutedEvents, ...uniqueConvex];
+  }, [convexEvents, scoutedEvents]);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isScouting, setIsScouting] = useState<boolean>(false);
@@ -158,11 +180,60 @@ export function useEventDiscovery() {
           setLogs((prev) => [successLog, ...prev]);
 
           // Prepend newly discovered events to the feed
-          setEvents((prev) => {
+          setScoutedEvents((prev) => {
             const existingIds = new Set(prev.map((e) => e.id));
             const freshEvents = data.events.filter((e: LocalEvent) => !existingIds.has(e.id));
             return [...freshEvents, ...prev];
           });
+
+          // Persist discovered events and scout log to Convex if configured
+          if (isConfigured) {
+            saveBatchMutation({
+              events: data.events.map((e: LocalEvent) => ({
+                id: e.id,
+                title: e.title,
+                category: e.category,
+                tagline: e.tagline,
+                description: e.description,
+                venueName: e.venueName,
+                address: e.address,
+                distanceKm: e.distanceKm,
+                coordinates: e.coordinates,
+                dateTime: e.dateTime,
+                formattedDate: e.formattedDate,
+                formattedTime: e.formattedTime,
+                price: e.price,
+                isFree: e.isFree,
+                matchScore: e.matchScore,
+                vibeTags: e.vibeTags,
+                organizerName: e.organizerName,
+                organizerEmail: e.organizerEmail,
+                sourceUrl: e.sourceUrl,
+                firecrawlExtractedAt: e.firecrawlExtractedAt,
+                ticketsRemaining: e.ticketsRemaining,
+                coverImage: e.coverImage,
+                coverImages: e.coverImages,
+                outreachStatus: e.outreachStatus || 'none',
+                sessionId,
+              })),
+            }).catch((err: unknown) => {
+              console.warn('⚠️ [Convex] Failed to save events batch:', err);
+            });
+
+            logRunMutation({
+              sessionId,
+              prompt: promptText,
+              location: effectiveLocation,
+              scoutMode: filters.scoutMode,
+              structuredCount: data.stats?.structuredCount,
+              unstructuredCount: data.stats?.unstructuredCount,
+              pagesScrapedCount: data.pagesScrapedCount,
+              totalEventsFound: data.events.length,
+              durationSec: Number(clientDuration),
+            }).catch((err: unknown) => {
+              console.warn('⚠️ [Convex] Failed to log scout run:', err);
+            });
+          }
 
           if (data.events[0]) {
             setSelectedEventId(data.events[0].id);
@@ -182,13 +253,14 @@ export function useEventDiscovery() {
         };
         setLogs((prev) => [warnLog, ...prev]);
         console.groupEnd();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('❌ Scout Pipeline Error:', err);
+        const errMessage = err instanceof Error ? err.message : 'Network error';
         const errLog: ScoutLog = {
           id: `log-${Date.now()}-err`,
           timestamp: timeStr(),
           level: 'info',
-          message: `Scout pipeline connection error: ${err?.message || 'Network error'}`,
+          message: `Scout pipeline connection error: ${errMessage}`,
         };
         setLogs((prev) => [errLog, ...prev]);
         console.groupEnd();
@@ -196,16 +268,35 @@ export function useEventDiscovery() {
         setIsScouting(false);
       }
     },
-    [filters, isScouting, locationLabel, userCoordinates]
+    [
+      filters,
+      isConfigured,
+      isScouting,
+      locationLabel,
+      logRunMutation,
+      saveBatchMutation,
+      sessionId,
+      userCoordinates,
+    ]
   );
 
-  const markEventOutreach = useCallback((eventId: string) => {
-    setEvents((prev) =>
-      prev.map((evt) =>
-        evt.id === eventId ? { ...evt, outreachStatus: 'sent' } : evt
-      )
-    );
-  }, []);
+  const markEventOutreach = useCallback(
+    (eventId: string) => {
+      setScoutedEvents((prev) =>
+        prev.map((evt) =>
+          evt.id === eventId ? { ...evt, outreachStatus: 'sent' } : evt
+        )
+      );
+      if (isConfigured) {
+        updateOutreachMutation({ eventId, status: 'sent' }).catch(
+          (err: unknown) => {
+            console.warn('⚠️ [Convex] Failed to update outreach status:', err);
+          }
+        );
+      }
+    },
+    [isConfigured, updateOutreachMutation]
+  );
 
   return {
     events: filteredEvents,

@@ -67,15 +67,14 @@ SideDoor goes to work as an autonomous scout:
 
 ---
 
-### Phase 2: Convex Backend & Schema Setup
-- [ ] Initialize Convex in the repository (`bun add convex`).
-- [ ] Define the reactive schema in `convex/schema.ts`:
-  - `queries`: User intent prompts, search radius, filter preferences.
-  - `events`: Title, category, venue, coordinates, date/time, price, vibe tags, match score, source URL, organizer contact info.
-  - `inboxes`: AgentMail mailbox configurations.
+### Phase 2: Convex Backend & Schema Setup (Completed)
+- [x] Initialize Convex in the repository (`bun add convex`).
+- [x] Define the reactive schema in `convex/schema.ts`:
+  - `events`: Title, category, venue, coordinates, date/time, price, vibe tags, match score, source URL, flyer candidates, organizer contact info.
   - `threads` & `messages`: Two-way email communications between agent and event organizers.
-  - `scoutRuns`: Audit logs of Firecrawl discovery passes.
-- [ ] Connect Next.js App Router with `ConvexClientProvider`.
+  - `scoutRuns`: Telemetry & audit logs of scout discovery passes.
+- [x] Connect Next.js App Router with resilient `ConvexClientProvider`.
+- [x] Wire reactive queries & mutations to `useEventDiscovery` and `useAgentMail` with zero-warning Oxlint and strict TypeScript 7.
 
 ---
 

@@ -11,12 +11,15 @@
     "test:firecrawl": "bun run scripts/test-firecrawl.ts",
     "test:ai": "bun run scripts/test-ai-queries.ts",
     "test:fast": "bun run scripts/test-fast-pipeline.ts",
-    "test:hybrid": "bun run scripts/test-hybrid-pipeline.ts"
+    "test:hybrid": "bun run scripts/test-hybrid-pipeline.ts",
+    "convex:dev": "bunx convex dev",
+    "convex:codegen": "bunx convex codegen"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.75",
     "@mendable/firecrawl-js": "^4.40.0",
     "ai": "^7.0.106",
+    "convex": "^1.46.0",
     "dotenv": "^18.0.0",
     "framer-motion": "^13.4.0",
     "lucide-react": "^1.47.0",
