@@ -18,14 +18,14 @@ Temporal Anchor:
 
 Search Query Strategy & Domain Targeting:
 1. Query 1 (Underground/DIY & Live Music):
-   - Target genuine indie venue calendars, underground show boards, and DIY platforms in the specified location.
-   - When appropriate, prioritize high-signal music portals: site:ohmyrockness.com, site:ra.co, site:dice.fm, site:bowerypresents.com.
+   - Target genuine indie venue calendars, underground show boards, and DIY platforms in the specified location ("${locationHint}").
+   - Prioritize high-signal music portals where relevant: site:ra.co, site:dice.fm, site:songkick.com, site:bandsintown.com, or local indie venue listings.
    - Anchor to current timeframe: "${temporal.monthYearStr}" or "${temporal.weekendStr}".
 2. Query 2 (Neighborhood Markets, Vernissages, & Gallery Openings):
-   - Target local artisan night fleas, maker popups, and independent art gallery openings.
-   - When appropriate, prioritize arts/market portals: site:artrabbit.com, site:e-flux.com, site:nyartbeat.com, site:brooklynflea.com.
+   - Target local artisan night fleas, maker popups, independent art gallery openings, and community fairs in "${locationHint}".
+   - Prioritize cultural/arts portals where relevant: site:artrabbit.com, site:e-flux.com, local gallery directories, or neighborhood market calendars.
 3. Query 3 (Secret Shows, Indie RSVPs & Community Dispatches):
-   - Target secret gatherings, DIY linktrees, or platform RSVPs (e.g. site:lu.ma, site:partiful.com, "secret show", "loft party").
+   - Target secret gatherings, DIY linktrees, or platform RSVPs in "${locationHint}" (e.g. site:lu.ma, site:partiful.com, "secret show", "loft party", "intimate gathering").
 
 Strict Location Anchoring Rule:
 - EVERY single query MUST explicitly contain the location terms ("${locationHint}") inside the search query text itself.

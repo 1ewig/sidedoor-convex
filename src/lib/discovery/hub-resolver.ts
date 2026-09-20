@@ -10,21 +10,17 @@ import { harvestImageCandidates } from '../images';
  * Known platforms and domain patterns that host calendar listings and direct event permalinks.
  */
 const HUB_DOMAINS = [
-  'ohmyrockness.com',
   'dice.fm',
   'ra.co',
+  'residentadvisor.net',
   'lu.ma',
   'luma.com',
-  'boweryballroom.com',
-  'mercuryeastpresents.com',
-  'brooklynbowl.com',
-  'babyallight.com',
-  'tveye.nyc',
-  'market-hotel.org',
-  'warsawconcerts.com',
-  'brooklynmelt.com',
+  'partiful.com',
   'songkick.com',
   'bandsintown.com',
+  'shotgun.live',
+  'artrabbit.com',
+  'ohmyrockness.com',
 ];
 
 /**
