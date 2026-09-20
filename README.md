@@ -65,7 +65,6 @@ src/
 scripts/                        # Verification test suites
 ├── test-firecrawl.ts           # Web search, scrape & direct photo test
 ├── test-ai-queries.ts          # Step 1 Gemini intent expansion test
-├── test-pipeline.ts            # Full 3-step end-to-end extraction test
 └── test-hybrid-pipeline.ts     # Two-lane hybrid scraping pipeline harness
 ```
 
@@ -157,8 +156,8 @@ bun run test:firecrawl
 # Test Suite: Gemini Step 1 query generation
 bun run test:ai
 
-# Test Suite: End-to-end 3-step discovery pipeline
-bun run test:pipeline
+# Test Suite: Two-lane hybrid scraping pipeline harness
+bun run test:hybrid
 ```
 
 ---
