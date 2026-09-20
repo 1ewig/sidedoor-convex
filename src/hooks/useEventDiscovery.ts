@@ -34,7 +34,10 @@ export function useEventDiscovery() {
 
   const sessionId = useSessionStore((state) => state.sessionId);
   const { isConfigured } = useConvexConfig();
-  const convexEvents = useQuery(api.events.list, isConfigured ? {} : 'skip');
+  const convexEvents = useQuery(
+    api.events.list,
+    isConfigured && sessionId ? { sessionId } : 'skip'
+  );
   const saveBatchMutation = useMutation(api.events.saveBatch);
   const updateOutreachMutation = useMutation(api.events.updateOutreachStatus);
   const logRunMutation = useMutation(api.scoutRuns.logRun);

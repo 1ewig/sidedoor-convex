@@ -1,40 +1,73 @@
+import Link from 'next/link';
 import { Mail, SlidersHorizontal } from 'lucide-react';
 import { LocationAnchor } from '@/components/location/LocationAnchor';
 import { Coordinates } from '@/types';
 
 interface HeaderProps {
-  onOpenDrawer: () => void;
-  unreadCount: number;
-  onOpenFilterDrawer: () => void;
+  currentTab?: 'studio' | 'radar';
+  onOpenDrawer?: () => void;
+  unreadCount?: number;
+  onOpenFilterDrawer?: () => void;
   locationLabel: string;
   coordinates?: Coordinates;
-  isLocating: boolean;
+  isLocating?: boolean;
   onLocateMe: () => void;
   onOpenMapModal?: () => void;
   locationError?: string | null;
 }
 
 export function Header({
+  currentTab = 'studio',
   onOpenDrawer,
-  unreadCount,
+  unreadCount = 0,
   onOpenFilterDrawer,
   locationLabel,
   coordinates,
-  isLocating,
+  isLocating = false,
   onLocateMe,
   onOpenMapModal,
   locationError,
 }: HeaderProps) {
   return (
     <header className="relative z-30 w-full px-6 sm:px-8 py-5 sm:py-7 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <span className="font-serif text-2xl tracking-tight text-[var(--theme-text-primary)]">
-          SideDoor
-        </span>
-        <span
-          className="w-1.5 h-1.5 rounded-full bg-[var(--theme-text-primary)] animate-pulse"
-          title="Scout active"
-        />
+      <div className="flex items-center gap-4">
+        <Link href="/main" className="flex items-center gap-2 group cursor-pointer focus-visible:outline-none">
+          <span className="font-serif text-2xl tracking-tight text-[var(--theme-text-primary)]">
+            SideDoor
+          </span>
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[var(--theme-text-primary)] animate-pulse"
+            title="Scout active"
+          />
+        </Link>
+
+        {/* Studio / Public Radar Navigation Switcher */}
+        <nav
+          aria-label="Views"
+          className="flex items-center p-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-xs)]"
+        >
+          <Link
+            href="/main"
+            className={`px-3 py-1 rounded-full transition-all duration-150 ${
+              currentTab === 'studio'
+                ? 'bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] font-medium shadow-xs'
+                : 'text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)]'
+            }`}
+          >
+            Studio
+          </Link>
+          <Link
+            href="/radar"
+            className={`px-3 py-1 rounded-full flex items-center gap-1.5 transition-all duration-150 ${
+              currentTab === 'radar'
+                ? 'bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] font-medium shadow-xs'
+                : 'text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)]'
+            }`}
+          >
+            <span>Radar</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-status-success)] animate-pulse" />
+          </Link>
+        </nav>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-2.5">
