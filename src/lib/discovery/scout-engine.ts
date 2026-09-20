@@ -1,6 +1,7 @@
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { ScrapedPageInput, ScoutEngineMode } from '@/types';
 import { harvestImageCandidates } from '../images';
+import { refineScoutQuery } from './pipeline';
 
 // ---------------------------------------------------------------------------
 // Junk Page Filter
@@ -133,18 +134,22 @@ export async function executeScoutCrawl({
   const allScrapedPages: ScrapedPageInput[] = [];
 
   const targetCountry = country || process.env.FIRECRAWL_COUNTRY || 'US';
-  const timeSuffix = when && when !== 'anytime' ? ` ${when}` : '';
 
-  const laserQuery = `${prompt} in ${location} events calendar${timeSuffix}`;
-  const queriesUsed = [laserQuery];
+  // Step 1: Refine intent, location & vibe tags with Gemini (~300ms)
+  const { searchQuery, effectiveLocation, vibeTags } = await refineScoutQuery(
+    prompt,
+    location,
+    when || 'this weekend'
+  );
+  const queriesUsed = [searchQuery];
 
   console.log(
-    `[ScoutEngine] ⚡ Fast single-pass search: "${laserQuery}" [Country: ${targetCountry}]`
+    `[ScoutEngine] ⚡ Gemini refined search query: "${searchQuery}" [Location: ${effectiveLocation}] [Country: ${targetCountry}] [Vibes: ${vibeTags.join(', ')}]`
   );
 
-  const searchRes = await searchWithBackoff(firecrawl, laserQuery, {
+  const searchRes = await searchWithBackoff(firecrawl, searchQuery, {
     limit: 4,
-    location,
+    location: effectiveLocation,
     country: targetCountry,
     scrapeOptions: {
       formats: ['rawHtml', 'markdown'],
@@ -161,6 +166,6 @@ export async function executeScoutCrawl({
   return {
     allScrapedPages,
     queriesUsed,
-    vibeTags: [],
+    vibeTags,
   };
 }
