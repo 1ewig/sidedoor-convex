@@ -154,6 +154,10 @@ export async function executeScoutCrawl({
     scrapeOptions: {
       formats: ['rawHtml', 'markdown'],
       onlyMainContent: true,
+      blockAds: true,
+      removeBase64Images: true,
+      timeout: 6000,
+      maxAge: 3600000,
     },
   });
 

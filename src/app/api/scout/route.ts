@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     );
 
     // 1. Crawl & Ingest Web Pages via Fast Single-Pass Search
+    const crawlStart = Date.now();
     const { allScrapedPages, queriesUsed, vibeTags } = await executeScoutCrawl({
       prompt,
       location,
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
       country,
       when,
     });
+    const crawlDurationSec = parseFloat(((Date.now() - crawlStart) / 1000).toFixed(2));
 
     if (allScrapedPages.length === 0) {
       return NextResponse.json({
@@ -66,19 +68,27 @@ export async function POST(req: NextRequest) {
         queries: queriesUsed,
         vibeTags,
         message: 'No web pages found matching query.',
+        stats: {
+          crawlDurationSec,
+          totalDurationSec: parseFloat(((Date.now() - reqStart) / 1000).toFixed(2)),
+        },
       });
     }
 
     // 2. Run Deterministic Lane A + Deep Lane B + LLM Curator
+    const discoveryStart = Date.now();
     const discoveryResult = await runHybridEventDiscovery(
       allScrapedPages,
       prompt,
       location,
       userCoords
     );
+    const discoveryDurationSec = parseFloat(((Date.now() - discoveryStart) / 1000).toFixed(2));
 
     const elapsed = parseFloat(((Date.now() - reqStart) / 1000).toFixed(2));
-    console.log(`[API /api/scout] ✅ Complete in ${elapsed}s: ${discoveryResult.events.length} events curated.`);
+    console.log(
+      `[API /api/scout] ✅ Complete in ${elapsed}s (Crawl: ${crawlDurationSec}s, Discovery/Curator: ${discoveryDurationSec}s): ${discoveryResult.events.length} events curated.`
+    );
 
     return NextResponse.json({
       success: true,
@@ -86,6 +96,8 @@ export async function POST(req: NextRequest) {
       stats: {
         ...discoveryResult.stats,
         scoutMode: 'fast',
+        crawlDurationSec,
+        discoveryDurationSec,
         totalDurationSec: elapsed,
       },
       queries: queriesUsed,
