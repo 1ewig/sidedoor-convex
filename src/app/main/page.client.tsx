@@ -81,6 +81,7 @@ export function PageClient() {
 
       {/* Header */}
       <Header
+        currentTab="studio"
         onOpenDrawer={() => setIsDrawerOpen(true)}
         unreadCount={unreadCount}
         onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
@@ -92,44 +93,45 @@ export function PageClient() {
         locationError={locationError}
       />
 
-      {/* Hero & Floating Dock */}
-      <main className="relative z-10 w-full max-w-2xl mx-auto px-6 my-auto flex flex-col items-center text-center py-10">
-        {/* Editorial Headline */}
-        <div className="mb-12 select-none">
-          <h1 className="font-serif text-4xl sm:text-5xl text-[var(--theme-text-primary)] tracking-tight leading-[var(--leading-tight)]">
+      {/* Main Global Studio Content */}
+      <main className="relative z-10 w-full flex-1">
+        {/* Studio Hero */}
+        <section className="relative z-10 w-full max-w-4xl mx-auto text-center pt-8 pb-8 px-4 sm:px-6">
+          {/* Editorial Headline */}
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl text-[var(--theme-text-primary)] tracking-tight leading-[var(--leading-tight)] mb-4">
             Local gatherings <br />
             <span className="font-serif italic font-normal text-[var(--theme-text-secondary)]">
               curated in silence
             </span>
           </h1>
+
+          {/* Soft Descriptive Subtitle */}
+          <p className="text-[var(--text-sm)] text-[var(--theme-text-muted)] max-w-xl mx-auto leading-[var(--leading-relaxed)] font-light mb-8">
+            Finding quiet gatherings, matching your taste, reaching out for you.
+          </p>
+
+          {/* Floating Dock */}
+          <FloatingDock
+            prompt={filters.query}
+            scoutMode={filters.scoutMode}
+            isScouting={isScouting}
+            onPromptChange={(val) => updateFilters({ query: val })}
+            onToggleMode={(mode) => updateFilters({ scoutMode: mode })}
+            onTriggerDiscovery={handleTriggerDiscovery}
+          />
+        </section>
+
+        {/* Expandable Discovered Feed */}
+        <div id="resultsFeed">
+          <DiscoveredFeed
+            events={events}
+            isOpen={isFeedOpen || events.length > 0}
+            isScouting={isScouting}
+            hybridStats={hybridStats}
+            onSelectEvent={(event) => setSelectedEvent(event)}
+          />
         </div>
-
-        {/* Floating Dock */}
-        <FloatingDock
-          prompt={filters.query}
-          scoutMode={filters.scoutMode}
-          isScouting={isScouting}
-          onPromptChange={(val) => updateFilters({ query: val })}
-          onToggleMode={(mode) => updateFilters({ scoutMode: mode })}
-          onTriggerDiscovery={handleTriggerDiscovery}
-        />
-
-        {/* Soft Descriptive Subtitle */}
-        <p className="text-[var(--text-xs)] text-[var(--theme-text-muted)] max-w-sm mt-6 leading-[var(--leading-relaxed)] font-light">
-          Finding quiet gatherings, matching your taste, reaching out for you.
-        </p>
       </main>
-
-      {/* Expandable Discovered Feed */}
-      <div id="resultsFeed">
-        <DiscoveredFeed
-          events={events}
-          isOpen={isFeedOpen || events.length > 0}
-          isScouting={isScouting}
-          hybridStats={hybridStats}
-          onSelectEvent={(event) => setSelectedEvent(event)}
-        />
-      </div>
 
       {/* Scout Tuning Filter Drawer */}
       <ScoutFilterDrawer

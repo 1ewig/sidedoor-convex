@@ -26,7 +26,7 @@ export function FloatingDock({
   };
 
   return (
-    <div className="relative w-full max-w-xl mx-auto">
+    <div className="relative w-full max-w-2xl mx-auto">
       {/* Ultra-Minimal Unified Dock */}
       <div
         className={`bg-[var(--theme-bg-surface)] rounded-full pl-5 pr-2 py-2 sm:pl-6 sm:pr-2.5 sm:py-2.5 shadow-[var(--shadow-ambient)] border transition-all flex items-center gap-2.5 sm:gap-3 ${

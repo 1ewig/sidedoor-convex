@@ -20,46 +20,53 @@ export function DiscoveredFeed({
   if (!isOpen) return null;
 
   return (
-    <section className="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 pb-20 transition-all duration-500 animate-in fade-in slide-in-from-top-4">
-      {/* Header bar */}
-      <div className="pt-6 flex items-center justify-between border-b border-[var(--theme-border-subtle)] pb-3.5 mb-5">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <span className="font-serif text-[var(--text-lg)] text-[var(--theme-text-primary)] font-semibold">
+    <section className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 pb-24 transition-all duration-500 animate-in fade-in slide-in-from-top-4">
+      {/* Minimal Centered Header */}
+      <div className="pt-8 pb-3 mb-6 flex items-center justify-center gap-2 flex-wrap text-center">
+        <div className="flex items-center gap-1.5">
+          <span className="font-serif text-[var(--text-base)] text-[var(--theme-text-primary)] font-medium">
             Discovered Gatherings
           </span>
-          {isScouting ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[var(--text-2xs)] font-mono bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--theme-text-secondary)] shadow-xs">
+          {!isScouting && (
+            <span className="font-mono text-[var(--text-2xs)] text-[var(--theme-text-muted)]">
+              ({events.length} {events.length === 1 ? 'gathering' : 'gatherings'})
+            </span>
+          )}
+        </div>
+
+        {isScouting ? (
+          <>
+            <span className="text-[var(--theme-border-strong)] font-mono text-[var(--text-2xs)]">·</span>
+            <span className="inline-flex items-center gap-1.5 font-mono text-[var(--text-2xs)] text-[var(--theme-text-secondary)]">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--theme-text-primary)] opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--theme-text-primary)]" />
               </span>
               Scouting in the field...
             </span>
-          ) : (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
-                ({events.length} results)
-              </span>
-              {hybridStats && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[var(--theme-bg-base)] text-[var(--theme-text-secondary)] border border-[var(--theme-border-subtle)]">
-                  {hybridStats.scoutMode === 'fast' ? (
-                    <Zap className="w-2.5 h-2.5 text-[var(--theme-brand-primary)]" />
-                  ) : (
-                    <Compass className="w-2.5 h-2.5 text-[var(--theme-text-secondary)]" />
-                  )}
-                  <span>
-                    {hybridStats.scoutMode === 'fast' ? 'Fast Scout' : 'Deep Scout'}
-                    {hybridStats.totalDurationSec ? ` • ${hybridStats.totalDurationSec}s` : ''}
-                  </span>
+          </>
+        ) : (
+          hybridStats && (
+            <>
+              <span className="text-[var(--theme-border-strong)] font-mono text-[var(--text-2xs)]">·</span>
+              <span className="inline-flex items-center gap-1 font-mono text-[var(--text-2xs)] text-[var(--theme-text-secondary)]">
+                {hybridStats.scoutMode === 'fast' ? (
+                  <Zap className="w-2.5 h-2.5 text-[var(--theme-brand-primary)]" />
+                ) : (
+                  <Compass className="w-2.5 h-2.5 text-[var(--theme-text-secondary)]" />
+                )}
+                <span>
+                  {hybridStats.scoutMode === 'fast' ? 'Fast Scout' : 'Deep Scout'}
+                  {hybridStats.totalDurationSec ? ` • ${hybridStats.totalDurationSec}s` : ''}
                 </span>
-              )}
-            </div>
-          )}
-        </div>
+              </span>
+            </>
+          )
+        )}
       </div>
 
       {/* Feed Container */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {/* Active Autonomous Scout Feedback Card */}
         {isScouting && (
           <div className="p-4 sm:p-5 bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] rounded-2xl shadow-xs space-y-3 animate-in fade-in duration-300">
@@ -96,11 +103,11 @@ export function DiscoveredFeed({
 
         {/* Skeleton Loaders while scouting */}
         {isScouting && (
-          <>
-            {[1, 2].map((i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+            {[1, 2, 3, 4].map((i) => (
               <div
                 key={`skeleton-${i}`}
-                className="w-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] p-4 sm:p-5 rounded-2xl shadow-xs flex flex-col gap-3 animate-pulse"
+                className="w-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] p-4 sm:p-5 rounded-xl shadow-xs flex flex-col gap-3 animate-pulse"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -125,7 +132,7 @@ export function DiscoveredFeed({
                 </div>
               </div>
             ))}
-          </>
+          </div>
         )}
 
         {/* Normal Feed Content when not scouting */}
@@ -137,14 +144,18 @@ export function DiscoveredFeed({
           </div>
         )}
 
-        {/* Existing Discovered Events (rendered below skeleton if scouting or as main list) */}
-        {events.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            onSelect={onSelectEvent}
-          />
-        ))}
+        {/* Existing Discovered Events in 2-column grid matching Radar */}
+        {events.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+            {events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onSelect={onSelectEvent}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
