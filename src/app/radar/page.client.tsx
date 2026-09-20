@@ -19,7 +19,6 @@ import { ScoutFilterDrawer } from '@/components/drawers/ScoutFilterDrawer';
 import { LocationPinModal } from '@/components/location/LocationPinModal';
 import { EventDetailModal } from '@/components/discovery/EventDetailModal';
 import { LocalEvent } from '@/types';
-import { matchesSearchFilters } from '@/lib/discovery/filters';
 
 export function RadarPageClient() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,13 +32,11 @@ export function RadarPageClient() {
   const isFilterDrawerOpen = useScoutFilterStore((state) => state.isFilterDrawerOpen);
   const setFilterDrawerOpen = useScoutFilterStore((state) => state.setFilterDrawerOpen);
 
-  const radiusKm = filters.radiusKm || 20;
-
   const { isConfigured } = useConvexConfig();
   const localScoutedEvents = useEventStore((state) => state.scoutedEvents);
   const updateEventOutreachStatus = useEventStore((state) => state.updateEventOutreachStatus);
 
-  // Global unearthings query from Convex
+  // Global unearthings query from Convex (Option A: Global Cultural Wire)
   const convexEvents = useQuery(
     api.events.list,
     isConfigured ? { limit: 100 } : 'skip'
@@ -95,12 +92,22 @@ export function RadarPageClient() {
     });
   }, [allEvents, location.coordinates]);
 
-  // Apply ScoutFilterDrawer filters (radius, category, onlyFree, minScore) + search query
+  // Global Radar Filter: Streams worldwide events with category, score, admission, and search filters
   const filteredEvents = useMemo(() => {
     return localizedEvents
       .filter((event) => {
-        // Evaluate against active ScoutFilterDrawer settings
-        if (!matchesSearchFilters(event, filters)) {
+        // Category Filter
+        if (filters.category !== 'all' && event.category !== filters.category) {
+          return false;
+        }
+
+        // Free Only Filter
+        if (filters.onlyFree && !event.isFree) {
+          return false;
+        }
+
+        // Vibe Match Threshold
+        if (event.matchScore < filters.minScore) {
           return false;
         }
 
@@ -119,13 +126,7 @@ export function RadarPageClient() {
 
         return true;
       })
-      .sort((a, b) => {
-        // Sort closest first, then by match score
-        if (typeof a.distanceKm === 'number' && typeof b.distanceKm === 'number') {
-          return a.distanceKm - b.distanceKm;
-        }
-        return b.matchScore - a.matchScore;
-      });
+      .sort((a, b) => b.matchScore - a.matchScore);
   }, [localizedEvents, filters, searchQuery]);
 
   const handleSendAgentMail = (event: LocalEvent) => {
@@ -151,7 +152,7 @@ export function RadarPageClient() {
       {/* Ambient Leaf Shadow Overlay */}
       <ShadowOverlay />
 
-      {/* Header with Active Radar Tab & Area Anchor */}
+      {/* Header with Active Radar Tab */}
       <Header
         currentTab="radar"
         onOpenDrawer={() => setIsDrawerOpen(true)}
@@ -165,12 +166,9 @@ export function RadarPageClient() {
         locationError={locationError}
       />
 
-      {/* Main Area Radar Content */}
+      {/* Main Global Radar Content */}
       <main className="relative z-10 w-full flex-1">
-        <RadarHero
-          locationLabel={location.label}
-          radiusKm={radiusKm}
-        />
+        <RadarHero />
 
         <RadarFilterBar
           searchQuery={searchQuery}
@@ -185,8 +183,6 @@ export function RadarPageClient() {
           isLoading={isLoading}
           onSelectEvent={(event) => setSelectedEvent(event)}
           onResetFilters={handleResetFilters}
-          locationLabel={location.label}
-          radiusKm={radiusKm}
         />
       </main>
 
@@ -212,7 +208,7 @@ export function RadarPageClient() {
         isOpen={isMapModalOpen}
         onClose={() => setIsMapModalOpen(false)}
         currentLocation={location}
-        radiusKm={radiusKm}
+        radiusKm={filters.radiusKm || 20}
         onLocateMe={locateMe}
         onConfirm={(label, coordinates, newRadius) => {
           setCustomLocation(label, coordinates);
