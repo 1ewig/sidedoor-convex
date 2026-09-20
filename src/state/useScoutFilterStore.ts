@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { SearchFilterState, EventCategory } from '@/types';
 
 export const DEFAULT_SEARCH_FILTERS: SearchFilterState = {
-  query: 'indie rock shows, outdoor markets, or art openings this weekend within 20 km',
+  query: '',
   radiusKm: 20,
   category: 'all',
   onlyFree: false,
@@ -70,7 +70,12 @@ export const useScoutFilterStore = create<ScoutFilterState>()(
       setFilterDrawerOpen: (isFilterDrawerOpen) => set({ isFilterDrawerOpen }),
 
       resetFilters: () => {
-        set({ filters: DEFAULT_SEARCH_FILTERS });
+        set((state) => ({
+          filters: {
+            ...DEFAULT_SEARCH_FILTERS,
+            query: state.filters.query,
+          },
+        }));
       },
     }),
     {

@@ -32,6 +32,8 @@ export function FloatingDock({
       >
         {/* Input */}
         <input
+          id="scout-prompt-input"
+          name="query"
           type="text"
           value={prompt}
           disabled={isScouting}
