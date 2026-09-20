@@ -72,11 +72,12 @@ export function useEventDiscovery() {
       });
 
       // Step 1: Query generation notice
+      const isFast = filters.scoutMode === 'fast';
       const startLog: ScoutLog = {
         id: `log-${Date.now()}-1`,
         timestamp: timeStr(),
         level: 'info',
-        message: `Agent searching for: "${promptText}"`,
+        message: `Agent scouting (${isFast ? '⚡ Fast' : '🔬 Deep'}): "${promptText}"`,
       };
       setLogs((prev) => [startLog, ...prev]);
 
@@ -86,11 +87,13 @@ export function useEventDiscovery() {
           id: `log-${Date.now()}-2`,
           timestamp: timeStr(),
           level: 'scrape',
-          message: 'Scouting local calendars, small-door venues, and DIY show flyers...',
+          message: isFast
+            ? '⚡ Fast single-pass scan of venue calendars & underground JSON-LD...'
+            : '🔬 Deep multi-angle crawl of DIY venues, Linktrees & flyer calendars...',
         };
         setLogs((prev) => [crawlLog, ...prev]);
 
-        console.log('🚀 Dispatching request to /api/scout...');
+        console.log(`🚀 Dispatching request to /api/scout [Mode: ${filters.scoutMode}]...`);
 
         const res = await fetch('/api/scout', {
           method: 'POST',
@@ -99,6 +102,7 @@ export function useEventDiscovery() {
             prompt: promptText,
             location: effectiveLocation,
             coordinates: userCoordinates,
+            mode: filters.scoutMode,
           }),
         });
 
@@ -164,7 +168,7 @@ export function useEventDiscovery() {
             id: `log-${Date.now()}-3`,
             timestamp: timeStr(),
             level: 'ai',
-            message: `Discovered ${data.events.length} gatherings curated for your vibe!`,
+            message: `Discovered ${data.events.length} gatherings via ${isFast ? '⚡ Fast Scout' : '🔬 Deep Scout'} in ${clientDuration}s!`,
             details: `Gatherings: ${data.events.map((e: LocalEvent) => e.title).slice(0, 3).join(', ')}.`,
           };
           setLogs((prev) => [successLog, ...prev]);

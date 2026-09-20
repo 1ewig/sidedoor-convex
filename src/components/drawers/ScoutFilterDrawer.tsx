@@ -11,6 +11,8 @@ import {
   Gauge,
   Tag,
   Ticket,
+  Zap,
+  Compass,
 } from 'lucide-react';
 import { SearchFilterState, EventCategory } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
@@ -154,6 +156,52 @@ export function ScoutFilterDrawer({
               {/* Group: Discovery Rules */}
               <div className="space-y-6">
                 <GroupLabel>Discovery Rules</GroupLabel>
+
+                {/* Engine Mode */}
+                <div className="space-y-2.5">
+                  <div className="flex justify-between items-baseline gap-3">
+                    <span className="flex items-center gap-1.5 text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] font-sans">
+                      <Zap className="w-3.5 h-3.5 text-[var(--theme-brand-primary)]" />
+                      Scout Engine Speed
+                    </span>
+                    <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-primary)] font-medium whitespace-nowrap">
+                      {filters.scoutMode === 'fast' ? '⚡ Fast (~10s)' : '🔬 Deep (~30s)'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-[var(--theme-bg-base)] rounded-xl border border-[var(--theme-border-subtle)]">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateFilters({ scoutMode: 'fast' })}
+                      aria-pressed={filters.scoutMode === 'fast'}
+                      className={`py-2 px-3 text-[var(--text-xs)] rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 ${
+                        filters.scoutMode === 'fast'
+                          ? 'bg-[var(--theme-bg-surface)] text-[var(--theme-text-primary)] shadow-xs font-semibold'
+                          : 'text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)]'
+                      }`}
+                    >
+                      <Zap className="w-3.5 h-3.5 text-[var(--theme-brand-primary)]" />
+                      <span>Fast Scout</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateFilters({ scoutMode: 'deep' })}
+                      aria-pressed={filters.scoutMode === 'deep'}
+                      className={`py-2 px-3 text-[var(--text-xs)] rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 ${
+                        filters.scoutMode === 'deep'
+                          ? 'bg-[var(--theme-bg-surface)] text-[var(--theme-text-primary)] shadow-xs font-semibold'
+                          : 'text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)]'
+                      }`}
+                    >
+                      <Compass className="w-3.5 h-3.5 text-[var(--theme-text-secondary)]" />
+                      <span>Deep Scout</span>
+                    </button>
+                  </div>
+                  <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans leading-[var(--leading-snug)]">
+                    {filters.scoutMode === 'fast'
+                      ? 'Single-pass scan targeting direct venue calendars & underground JSON-LD.'
+                      : 'Exhaustive multi-angle query expansion & venue hub permalink mapping.'}
+                  </p>
+                </div>
 
                 {/* Search Radius */}
                 <div className="space-y-2.5">

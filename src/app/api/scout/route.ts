@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     const prompt = body?.prompt?.trim();
     const location = body?.location?.trim() || 'Brooklyn / New York City';
     const userCoords = body?.coordinates as Coordinates | undefined;
+    const mode = (body?.mode === 'deep' ? 'deep' : 'fast') as 'fast' | 'deep';
 
     if (!prompt) {
       return NextResponse.json(
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('\n[API /api/scout] === New Scout Request ===');
+    console.log(`\n[API /api/scout] === New Scout Request [Mode: ${mode.toUpperCase()}] ===`);
     console.log(`[API /api/scout] Prompt:   "${prompt}"`);
     console.log(`[API /api/scout] Location: "${location}"`);
     if (userCoords) {
@@ -57,109 +58,158 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // STEP 1: Query generation via Gemini Flash
-    console.log('[API /api/scout] Step 1: Generating targeted search queries...');
-    const queryResult = await generateDiscoveryQueries(prompt, location);
-    console.log(`[API /api/scout] Generated ${queryResult.queries.length} queries:`, queryResult.queries);
-
-    // STEP 2: Multi-query parallel crawl via Firecrawl (requesting 'markdown' + 'rawHtml' + plain JSON Schema)
-    console.log('[API /api/scout] Step 2: Parallel crawling via Firecrawl...');
     const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
-    const searchSettled = await Promise.allSettled(
-      queryResult.queries.map((q) =>
-        firecrawl.search(q, {
-          limit: 2,
-          location: location,
-          country: 'US',
-          scrapeOptions: {
-            formats: [
-              'markdown',
-              'rawHtml',
-              {
-                type: 'json',
-                schema: FIRECRAWL_EVENT_LIST_SCHEMA,
-                prompt: FIRECRAWL_EVENT_EXTRACTION_PROMPT,
-              },
-            ],
-            onlyMainContent: true,
-          },
-        })
-      )
-    );
-
     const seenUrls = new Set<string>();
     const allScrapedPages: ScrapedPageInput[] = [];
+    let queriesUsed: string[] = [];
+    let vibeTags: string[] = [];
 
-    for (const res of searchSettled) {
-      if (res.status === 'fulfilled') {
-        const items = (res.value as any)?.web || (res.value as any)?.data || [];
-        for (const item of items) {
-          if (!item.url || seenUrls.has(item.url)) continue;
-          seenUrls.add(item.url);
+    if (mode === 'fast') {
+      // ⚡ FAST SCOUT ENGINE: Laser single-pass crawl without heavy LLM schema
+      const laserQuery = `${prompt} in ${location} events calendar`;
+      queriesUsed = [laserQuery];
+      console.log('[API /api/scout] ⚡ Fast Mode: Executing laser single-pass crawl...');
 
-          const markdown = item.markdown || '';
-          const rawHtml = item.rawHtml || item.html || '';
-          const ogImage =
-            item.metadata?.ogImage ||
-            item.metadata?.['og:image'] ||
-            item.metadata?.image;
-
-          let flyerImage = ogImage;
-          if (!flyerImage) {
-            const mdImgMatch = markdown.match(
-              /!\[.*?\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp|avif)[^\s)]*)\)/i
-            );
-            if (mdImgMatch) flyerImage = mdImgMatch[1];
-          }
-
-          allScrapedPages.push({
-            url: item.url,
-            title: item.title || item.metadata?.title || 'Event Calendar Listing',
-            markdown,
-            rawHtml,
-            ogImage: flyerImage,
-            extractedJson: item.json || null,
-          });
-        }
-      }
-    }
-
-    console.log(`[API /api/scout] Crawled & deduplicated ${allScrapedPages.length} primary search pages.`);
-
-    // STEP 2B: Hub & Venue permalink resolution via /map and parallel /scrape
-    try {
-      const hubPages = await resolveHubPermalinks(
-        firecrawl,
-        Array.from(seenUrls),
+      const searchRes = await firecrawl.search(laserQuery, {
+        limit: 3,
         location,
-        seenUrls,
-        3
+        country: 'US',
+        scrapeOptions: {
+          formats: ['rawHtml', 'markdown'],
+          onlyMainContent: true,
+        },
+      });
+
+      const items = (searchRes as any)?.web || (searchRes as any)?.data || [];
+      for (const item of items) {
+        if (!item.url || seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+
+        const markdown = item.markdown || '';
+        const rawHtml = item.rawHtml || item.html || '';
+        const ogImage =
+          item.metadata?.ogImage ||
+          item.metadata?.['og:image'] ||
+          item.metadata?.image;
+
+        let flyerImage = ogImage;
+        if (!flyerImage) {
+          const mdImgMatch = markdown.match(
+            /!\[.*?\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp|avif)[^\s)]*)\)/i
+          );
+          if (mdImgMatch) flyerImage = mdImgMatch[1];
+        }
+
+        allScrapedPages.push({
+          url: item.url,
+          title: item.title || item.metadata?.title || 'Event Calendar Listing',
+          markdown,
+          rawHtml,
+          ogImage: flyerImage,
+          extractedJson: item.json || null,
+        });
+      }
+    } else {
+      // 🔬 DEEP SCOUT ENGINE: Multi-angle expansion + heavy LLM schemas + hub resolution
+      console.log('[API /api/scout] 🔬 Deep Mode: Generating multi-angle search queries...');
+      const queryResult = await generateDiscoveryQueries(prompt, location);
+      queriesUsed = queryResult.queries;
+      vibeTags = queryResult.vibeTags;
+      console.log(`[API /api/scout] Generated ${queriesUsed.length} queries:`, queriesUsed);
+
+      const searchSettled = await Promise.allSettled(
+        queriesUsed.map((q) =>
+          firecrawl.search(q, {
+            limit: 2,
+            location: location,
+            country: 'US',
+            scrapeOptions: {
+              formats: [
+                'markdown',
+                'rawHtml',
+                {
+                  type: 'json',
+                  schema: FIRECRAWL_EVENT_LIST_SCHEMA,
+                  prompt: FIRECRAWL_EVENT_EXTRACTION_PROMPT,
+                },
+              ],
+              onlyMainContent: true,
+            },
+          })
+        )
       );
-      for (const p of hubPages) {
-        if (!seenUrls.has(p.url)) {
-          seenUrls.add(p.url);
-          allScrapedPages.push(p);
+
+      for (const res of searchSettled) {
+        if (res.status === 'fulfilled') {
+          const items = (res.value as any)?.web || (res.value as any)?.data || [];
+          for (const item of items) {
+            if (!item.url || seenUrls.has(item.url)) continue;
+            seenUrls.add(item.url);
+
+            const markdown = item.markdown || '';
+            const rawHtml = item.rawHtml || item.html || '';
+            const ogImage =
+              item.metadata?.ogImage ||
+              item.metadata?.['og:image'] ||
+              item.metadata?.image;
+
+            let flyerImage = ogImage;
+            if (!flyerImage) {
+              const mdImgMatch = markdown.match(
+                /!\[.*?\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp|avif)[^\s)]*)\)/i
+              );
+              if (mdImgMatch) flyerImage = mdImgMatch[1];
+            }
+
+            allScrapedPages.push({
+              url: item.url,
+              title: item.title || item.metadata?.title || 'Event Calendar Listing',
+              markdown,
+              rawHtml,
+              ogImage: flyerImage,
+              extractedJson: item.json || null,
+            });
+          }
         }
       }
-      if (hubPages.length > 0) {
-        console.log(`[API /api/scout] Augmented with ${hubPages.length} direct event permalinks from calendar hubs.`);
+
+      console.log(`[API /api/scout] Crawled & deduplicated ${allScrapedPages.length} primary search pages.`);
+
+      // Direct Calendar Hub & Venue permalink resolution
+      try {
+        const hubPages = await resolveHubPermalinks(
+          firecrawl,
+          Array.from(seenUrls),
+          location,
+          seenUrls,
+          3
+        );
+        for (const p of hubPages) {
+          if (!seenUrls.has(p.url)) {
+            seenUrls.add(p.url);
+            allScrapedPages.push(p);
+          }
+        }
+        if (hubPages.length > 0) {
+          console.log(`[API /api/scout] Augmented with ${hubPages.length} direct event permalinks from calendar hubs.`);
+        }
+      } catch (hubErr: any) {
+        console.warn('[API /api/scout] Hub permalink resolution warning:', hubErr?.message || hubErr);
       }
-    } catch (hubErr: any) {
-      console.warn('[API /api/scout] Hub permalink resolution warning:', hubErr?.message || hubErr);
     }
 
     if (allScrapedPages.length === 0) {
       return NextResponse.json({
         success: true,
         events: [],
-        queries: queryResult.queries,
-        vibeTags: queryResult.vibeTags,
+        queries: queriesUsed,
+        vibeTags,
         message: 'No web pages found matching query angles.',
       });
     }
 
-    // STEP 3: Two-Lane Hybrid Discovery (Deterministic Lane A + Deep Lane B + Semantic Curator)
-    console.log('[API /api/scout] Step 3: Running hybrid discovery pipeline...');
+    // Two-Lane Hybrid Discovery (Deterministic Lane A + Fallback Lane B + Semantic Curator)
+    console.log(`[API /api/scout] Curating ${allScrapedPages.length} scraped pages...`);
     const discoveryResult = await runHybridEventDiscovery(
       allScrapedPages,
       prompt,
@@ -167,17 +217,23 @@ export async function POST(req: NextRequest) {
       userCoords
     );
 
-    const elapsed = ((Date.now() - reqStart) / 1000).toFixed(2);
+    const elapsed = parseFloat(((Date.now() - reqStart) / 1000).toFixed(2));
     console.log(
       `[API /api/scout] ✅ Complete in ${elapsed}s: Discovered ${discoveryResult.events.length} events.`
     );
 
+    const stats = {
+      ...discoveryResult.stats,
+      scoutMode: mode,
+      totalDurationSec: elapsed,
+    };
+
     return NextResponse.json({
       success: true,
       events: discoveryResult.events,
-      stats: discoveryResult.stats,
-      queries: queryResult.queries,
-      vibeTags: queryResult.vibeTags,
+      stats,
+      queries: queriesUsed,
+      vibeTags,
       pagesScrapedCount: allScrapedPages.length,
     });
   } catch (err: any) {

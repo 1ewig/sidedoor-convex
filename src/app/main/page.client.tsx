@@ -28,6 +28,7 @@ export function PageClient() {
     events,
     filters,
     isScouting,
+    hybridStats,
     updateFilters,
     markEventOutreach,
     triggerScout,
@@ -105,8 +106,10 @@ export function PageClient() {
         {/* Floating Dock */}
         <FloatingDock
           prompt={filters.query}
+          scoutMode={filters.scoutMode}
           isScouting={isScouting}
           onPromptChange={(val) => updateFilters({ query: val })}
+          onToggleMode={(mode) => updateFilters({ scoutMode: mode })}
           onTriggerDiscovery={handleTriggerDiscovery}
         />
 
@@ -122,6 +125,7 @@ export function PageClient() {
           events={events}
           isOpen={isFeedOpen}
           isScouting={isScouting}
+          hybridStats={hybridStats}
           onSelectEvent={(event) => setSelectedEvent(event)}
         />
       </div>

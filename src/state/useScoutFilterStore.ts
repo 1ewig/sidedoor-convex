@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { SearchFilterState, EventCategory } from '@/types';
+import { SearchFilterState, EventCategory, ScoutEngineMode } from '@/types';
 
 export const DEFAULT_SEARCH_FILTERS: SearchFilterState = {
   query: '',
@@ -8,6 +8,7 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilterState = {
   category: 'all',
   onlyFree: false,
   minScore: 80,
+  scoutMode: 'fast',
 };
 
 interface ScoutFilterState {
@@ -21,6 +22,7 @@ interface ScoutFilterState {
   setCategory: (category: EventCategory | 'all') => void;
   setOnlyFree: (onlyFree: boolean) => void;
   setMinScore: (minScore: number) => void;
+  setScoutMode: (scoutMode: ScoutEngineMode) => void;
   setFilterDrawerOpen: (isOpen: boolean) => void;
   resetFilters: () => void;
 }
@@ -67,6 +69,12 @@ export const useScoutFilterStore = create<ScoutFilterState>()(
         }));
       },
 
+      setScoutMode: (scoutMode) => {
+        set((state) => ({
+          filters: { ...state.filters, scoutMode },
+        }));
+      },
+
       setFilterDrawerOpen: (isFilterDrawerOpen) => set({ isFilterDrawerOpen }),
 
       resetFilters: () => {
@@ -74,6 +82,7 @@ export const useScoutFilterStore = create<ScoutFilterState>()(
           filters: {
             ...DEFAULT_SEARCH_FILTERS,
             query: state.filters.query,
+            scoutMode: state.filters.scoutMode,
           },
         }));
       },

@@ -1,11 +1,12 @@
-import { Loader2 } from 'lucide-react';
-import { LocalEvent } from '@/types';
+import { Loader2, Zap, Compass } from 'lucide-react';
+import { LocalEvent, HybridDiscoveryStats } from '@/types';
 import { EventCard } from './EventCard';
 
 interface DiscoveredFeedProps {
   events: LocalEvent[];
   isOpen: boolean;
   isScouting?: boolean;
+  hybridStats?: HybridDiscoveryStats | null;
   onSelectEvent: (event: LocalEvent) => void;
 }
 
@@ -13,6 +14,7 @@ export function DiscoveredFeed({
   events,
   isOpen,
   isScouting = false,
+  hybridStats,
   onSelectEvent,
 }: DiscoveredFeedProps) {
   if (!isOpen) return null;
@@ -21,7 +23,7 @@ export function DiscoveredFeed({
     <section className="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 pb-20 transition-all duration-500 animate-in fade-in slide-in-from-top-4">
       {/* Header bar */}
       <div className="pt-6 flex items-center justify-between border-b border-[var(--theme-border-subtle)] pb-3.5 mb-5">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-serif text-[var(--text-lg)] text-[var(--theme-text-primary)] font-semibold">
             Discovered Gatherings
           </span>
@@ -34,9 +36,24 @@ export function DiscoveredFeed({
               Scouting in the field...
             </span>
           ) : (
-            <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
-              ({events.length} results)
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
+                ({events.length} results)
+              </span>
+              {hybridStats && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[var(--theme-bg-base)] text-[var(--theme-text-secondary)] border border-[var(--theme-border-subtle)]">
+                  {hybridStats.scoutMode === 'fast' ? (
+                    <Zap className="w-2.5 h-2.5 text-[var(--theme-brand-primary)]" />
+                  ) : (
+                    <Compass className="w-2.5 h-2.5 text-[var(--theme-text-secondary)]" />
+                  )}
+                  <span>
+                    {hybridStats.scoutMode === 'fast' ? 'Fast Scout' : 'Deep Scout'}
+                    {hybridStats.totalDurationSec ? ` • ${hybridStats.totalDurationSec}s` : ''}
+                  </span>
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>

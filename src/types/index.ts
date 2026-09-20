@@ -62,12 +62,15 @@ export interface EmailThread {
   messages: EmailMessage[];
 }
 
+export type ScoutEngineMode = 'fast' | 'deep';
+
 export interface SearchFilterState {
   query: string;
   radiusKm: number;
   category: string;
   onlyFree: boolean;
   minScore: number;
+  scoutMode: ScoutEngineMode;
 }
 
 export interface UserLocation {
@@ -80,6 +83,8 @@ export interface HybridDiscoveryStats {
   unstructuredCount: number;
   pagesScrapedCount: number;
   curationTimeSec?: number;
+  scoutMode?: ScoutEngineMode;
+  totalDurationSec?: number;
 }
 
 export * from './discovery';
