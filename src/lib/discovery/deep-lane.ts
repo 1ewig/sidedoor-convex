@@ -16,6 +16,12 @@ import { getTemporalContext } from '../temporal';
 const UnstructuredExtractionSchema = z.object({
   events: z.array(
     z.object({
+      sourcePageIndex: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe('1-based source number [1, 2, ...] from which this event was extracted'),
       title: z.string().describe('Event name or headline band/artist'),
       venueName: z.string().describe('Venue, gallery, or space name'),
       address: z.string().describe('Neighborhood or street address'),
@@ -65,22 +71,32 @@ export async function extractFromUnstructuredMarkdown(
     prompt: `User Query: "${userPrompt}"\n\nContent:\n${combined}`,
   });
 
-  return result.object.events.map((evt) => ({
-    id: createCandidateId('unstructured'),
-    sourceLane: 'unstructured' as const,
-    title: evt.title,
-    category: evt.category as EventCategory,
-    venueName: evt.venueName,
-    address: evt.address,
-    coordinates: evt.coordinates,
-    formattedDate: evt.formattedDate,
-    formattedTime: evt.formattedTime,
-    price: evt.price,
-    isFree: evt.isFree || /free|pwyc/i.test(evt.price),
-    coverImage: pages[0]?.ogImage,
-    sourceUrl: pages[0]?.url || '',
-    organizerName: evt.organizerName || evt.venueName,
-    organizerEmail: evt.organizerEmail || '',
-    rawSnippet: evt.description,
-  }));
+  return result.object.events.map((evt) => {
+    const pageIndex =
+      typeof evt.sourcePageIndex === 'number' &&
+      evt.sourcePageIndex >= 1 &&
+      evt.sourcePageIndex <= pages.length
+        ? evt.sourcePageIndex - 1
+        : 0;
+    const sourcePage = pages[pageIndex] || pages[0];
+
+    return {
+      id: createCandidateId('unstructured'),
+      sourceLane: 'unstructured' as const,
+      title: evt.title,
+      category: evt.category as EventCategory,
+      venueName: evt.venueName,
+      address: evt.address,
+      coordinates: evt.coordinates,
+      formattedDate: evt.formattedDate,
+      formattedTime: evt.formattedTime,
+      price: evt.price,
+      isFree: evt.isFree || /free|pwyc/i.test(evt.price),
+      coverImage: sourcePage?.ogImage,
+      sourceUrl: sourcePage?.url || '',
+      organizerName: evt.organizerName || evt.venueName,
+      organizerEmail: evt.organizerEmail || '',
+      rawSnippet: evt.description,
+    };
+  });
 }

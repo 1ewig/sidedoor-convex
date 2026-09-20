@@ -42,7 +42,7 @@ export function normalizeScrapedPages(
       markdown,
       rawHtml,
       ogImage: flyerImage,
-      extractedJson: item.json || null,
+      ...(item.json ? { extractedJson: item.json } : {}),
     });
   }
 

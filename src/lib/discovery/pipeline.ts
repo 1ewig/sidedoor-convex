@@ -1,11 +1,9 @@
-import { LocalEvent } from '@/types';
 import { CandidateEvent, HybridDiscoveryResult, ScrapedPageInput } from '@/types/discovery';
 import { extractStructuredEventsFromHtml } from '../schema-org';
 import { extractFromUnstructuredMarkdown } from './deep-lane';
 import { curateCandidatesWithLLM } from './curator';
 import { MAX_PIPELINE_CANDIDATES } from './config';
 import { getTemporalContext } from '../temporal';
-import { calculateHaversineDistanceKm } from '../geo';
 import { createCandidateId } from './id';
 import { inferEventCategory } from './category';
 
@@ -110,28 +108,8 @@ export async function runHybridEventDiscovery(
   const curatedEvents = await curateCandidatesWithLLM(allCandidates, userPrompt, userCoordinates);
   const curationTimeSec = parseFloat(((Date.now() - curatorStart) / 1000).toFixed(2));
 
-  // Compute exact Haversine distance if user coordinates provided
-  const finalEvents: LocalEvent[] = curatedEvents.map((evt) => {
-    if (
-      userCoordinates &&
-      typeof userCoordinates.lat === 'number' &&
-      typeof userCoordinates.lng === 'number' &&
-      typeof evt.coordinates?.lat === 'number' &&
-      typeof evt.coordinates?.lng === 'number'
-    ) {
-      const distance = calculateHaversineDistanceKm(
-        userCoordinates.lat,
-        userCoordinates.lng,
-        evt.coordinates.lat,
-        evt.coordinates.lng
-      );
-      return { ...evt, distanceKm: distance };
-    }
-    return evt;
-  });
-
   return {
-    events: finalEvents,
+    events: curatedEvents,
     stats: {
       structuredCount: laneA_Candidates.length,
       unstructuredCount: laneB_Candidates.length,

@@ -1,14 +1,16 @@
 import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { EventCategory, LocalEvent } from '@/types';
+import { EventCategory, LocalEvent, Coordinates } from '@/types';
 import { CandidateEvent } from '@/types/discovery';
 import { getGoogleApiKey, SIDEDOOR_MODEL } from './config';
 import { buildCuratorSystemPrompt } from './prompts';
+import { toEventId } from './id';
+import { calculateHaversineDistanceKm } from '../geo';
 
 /**
  * Unified semantic curator. Takes consolidated Lane A + Lane B candidates and
- * enriches them into UI-ready LocalEvent objects (matchScore, vibeTags, tagline).
+ * enriches them into UI-ready LocalEvent objects (matchScore, vibeTags, tagline, distance).
  */
 
 const SemanticCuratorSchema = z.object({
@@ -25,13 +27,10 @@ const SemanticCuratorSchema = z.object({
   ),
 });
 
-/** Default fallback anchor when neither the candidate nor the user provides coordinates. */
-export const DEFAULT_FALLBACK_COORDINATES = { lat: 40.7128, lng: -73.95 };
-
 export async function curateCandidatesWithLLM(
   candidates: CandidateEvent[],
   userPrompt: string,
-  fallbackCoordinates?: { lat: number; lng: number }
+  userCoordinates?: Coordinates
 ): Promise<LocalEvent[]> {
   if (candidates.length === 0) return [];
 
@@ -64,23 +63,41 @@ export async function curateCandidatesWithLLM(
     lookup.set(item.candidateId, item);
   }
 
-  const anchor = fallbackCoordinates || DEFAULT_FALLBACK_COORDINATES;
+  const defaultAnchor: Coordinates = userCoordinates || { lat: 40.7128, lng: -73.95 };
   const finalEvents: LocalEvent[] = [];
 
   for (const cand of candidates) {
     const curation = lookup.get(cand.id);
     if (curation && curation.matchScore < 60) continue;
 
+    const eventCoords: Coordinates = cand.coordinates || defaultAnchor;
+    let distanceKm = 0;
+
+    if (
+      userCoordinates &&
+      typeof userCoordinates.lat === 'number' &&
+      typeof userCoordinates.lng === 'number' &&
+      typeof eventCoords.lat === 'number' &&
+      typeof eventCoords.lng === 'number'
+    ) {
+      distanceKm = calculateHaversineDistanceKm(
+        userCoordinates.lat,
+        userCoordinates.lng,
+        eventCoords.lat,
+        eventCoords.lng
+      );
+    }
+
     finalEvents.push({
-      id: cand.id.replace('cand-', 'evt-'),
+      id: toEventId(cand.id),
       title: cand.title,
       category: (curation?.category || cand.category || 'music') as EventCategory,
       tagline: curation?.tagline || `Live at ${cand.venueName}`,
       description: curation?.editorialOverview || cand.rawSnippet || `Gathering hosted at ${cand.venueName}.`,
       venueName: cand.venueName,
       address: cand.address,
-      distanceKm: 0,
-      coordinates: cand.coordinates || anchor,
+      distanceKm,
+      coordinates: eventCoords,
       dateTime: cand.isoDate || new Date().toISOString(),
       formattedDate: cand.formattedDate || 'This Weekend',
       formattedTime: cand.formattedTime || '8:00 PM',
