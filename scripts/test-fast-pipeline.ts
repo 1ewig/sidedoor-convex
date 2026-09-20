@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { resolve } from 'path';
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { extractStructuredEventsFromHtml } from '../src/lib/schema-org';
-import { curateCandidatesWithLLM } from '../src/lib/discovery/curator';
+import { curateCandidatesWithLLM, extractFromUnstructuredMarkdown } from '../src/lib/discovery';
 import { getTemporalContext } from '../src/lib/temporal';
 import { CandidateEvent, ScrapedPageInput } from '../src/types/discovery';
 import { LocalEvent } from '../src/types';
@@ -106,7 +106,6 @@ async function runFastTest() {
   } else {
     console.log('⚠️ Lane A had 0 events, testing fallback extraction on top page markdown...');
     // Quick fallback on the first page markdown if no JSON-LD found
-    const { extractFromUnstructuredMarkdown } = await import('../src/lib/discovery/deep-lane');
     const scrapedPages: ScrapedPageInput[] = items.slice(0, 2).map((it: any) => ({
       url: it.url,
       title: it.title || 'Event Calendar',

@@ -1,7 +1,6 @@
 import { CandidateEvent } from '@/types/discovery';
 import { cleanHtmlText } from './html';
-import { createCandidateId } from './discovery/id';
-import { inferEventCategory } from './discovery/category';
+import { createCandidateId, inferEventCategory } from './discovery';
 import { harvestImageCandidates } from './images';
 
 /**

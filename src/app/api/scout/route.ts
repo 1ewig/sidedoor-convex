@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeScoutCrawl } from '@/lib/discovery/scout-engine';
 import { runHybridEventDiscovery } from '@/lib/discovery/pipeline';
-import { Coordinates, ScoutEngineMode } from '@/types';
+import { Coordinates } from '@/types';
 
 export async function POST(req: NextRequest) {
   const reqStart = Date.now();
@@ -10,7 +10,6 @@ export async function POST(req: NextRequest) {
     const prompt = body?.prompt?.trim();
     const location = body?.location?.trim() || 'Brooklyn / New York City';
     const userCoords = body?.coordinates as Coordinates | undefined;
-    const mode = (body?.mode === 'deep' ? 'deep' : 'fast') as ScoutEngineMode;
     const country = body?.country ? String(body.country).trim() : undefined;
     const when = body?.when ? String(body.when).trim() : undefined;
 
@@ -48,14 +47,13 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(
-      `\n[API /api/scout] === Scout Request [${mode.toUpperCase()}] "${prompt}" @ ${location} (Time: ${when || 'default'}, Country: ${country || 'auto'}) ===`
+      `\n[API /api/scout] === Fast Scout Request "${prompt}" @ ${location} (Time: ${when || 'default'}, Country: ${country || 'auto'}) ===`
     );
 
-    // 1. Crawl & Ingest Web Pages
+    // 1. Crawl & Ingest Web Pages via Fast Single-Pass Search
     const { allScrapedPages, queriesUsed, vibeTags } = await executeScoutCrawl({
       prompt,
       location,
-      mode,
       firecrawlKey,
       country,
       when,
@@ -67,7 +65,7 @@ export async function POST(req: NextRequest) {
         events: [],
         queries: queriesUsed,
         vibeTags,
-        message: 'No web pages found matching query angles.',
+        message: 'No web pages found matching query.',
       });
     }
 
@@ -87,7 +85,7 @@ export async function POST(req: NextRequest) {
       events: discoveryResult.events,
       stats: {
         ...discoveryResult.stats,
-        scoutMode: mode,
+        scoutMode: 'fast',
         totalDurationSec: elapsed,
       },
       queries: queriesUsed,

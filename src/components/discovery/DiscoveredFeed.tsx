@@ -1,4 +1,4 @@
-import { Loader2, Zap, Compass } from 'lucide-react';
+import { Loader2, Zap } from 'lucide-react';
 import { LocalEvent, HybridDiscoveryStats } from '@/types';
 import { EventCard } from './EventCard';
 
@@ -50,13 +50,9 @@ export function DiscoveredFeed({
             <>
               <span className="text-[var(--theme-border-strong)] font-mono text-[var(--text-2xs)]">·</span>
               <span className="inline-flex items-center gap-1 font-mono text-[var(--text-2xs)] text-[var(--theme-text-secondary)]">
-                {hybridStats.scoutMode === 'fast' ? (
-                  <Zap className="w-2.5 h-2.5 text-[var(--theme-brand-primary)]" />
-                ) : (
-                  <Compass className="w-2.5 h-2.5 text-[var(--theme-text-secondary)]" />
-                )}
+                <Zap className="w-2.5 h-2.5 text-[var(--theme-brand-primary)]" />
                 <span>
-                  {hybridStats.scoutMode === 'fast' ? 'Fast Scout' : 'Deep Scout'}
+                  Fast Scout
                   {hybridStats.totalDurationSec ? ` • ${hybridStats.totalDurationSec}s` : ''}
                 </span>
               </span>

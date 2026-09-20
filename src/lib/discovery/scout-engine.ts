@@ -1,18 +1,41 @@
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { ScrapedPageInput, ScoutEngineMode } from '@/types';
-import { generateDiscoveryQueries } from './query-planner';
-import { resolveHubPermalinks } from './hub-resolver';
-import {
-  FIRECRAWL_EVENT_LIST_SCHEMA,
-  FIRECRAWL_EVENT_EXTRACTION_PROMPT,
-} from './firecrawl-schema';
 import { harvestImageCandidates } from '../images';
-import { isJunkPage } from './mining';
 
-/**
- * Normalizes raw Firecrawl search items into typed ScrapedPageInput objects.
- * Handles deduplication, junk page filtering, ogImage resolution, and markdown flyer fallback.
- */
+// ---------------------------------------------------------------------------
+// Junk Page Filter
+// ---------------------------------------------------------------------------
+
+const JUNK_HOST_PREFIX = /^(business|legal|blog|careers|jobs|support|help)\./i;
+const JUNK_PATH_SEGMENT =
+  /^\/(about|about-us|jobs|careers|blog|news|terms|legal|privacy|business|company|contact|team|press|mission|how-it-works|faq)(\/|$)/i;
+const JUNK_PHRASES =
+  /terms and conditions|privacy policy|join our team|our story|careers at|jobs at|how it works|latest news/i;
+const TICKET_CATEGORY_PORTAL =
+  /ticketmaster\.com\/(soccer|sports|music|comedy|family|theater|arts|family)\/?(\?|$)/i;
+
+export function isJunkPage(url: string, title?: string, snippet?: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.host.replace(/^www\./, '').toLowerCase();
+    const pathname = u.pathname.toLowerCase();
+
+    if (JUNK_HOST_PREFIX.test(host)) return true;
+    if (JUNK_PATH_SEGMENT.test(pathname)) return true;
+    if (TICKET_CATEGORY_PORTAL.test(url)) return true;
+
+    const fullText = `${title || ''} ${snippet || ''}`.toLowerCase();
+    if (JUNK_PHRASES.test(fullText) && fullText.length < 200) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Scraped Page Normalization
+// ---------------------------------------------------------------------------
+
 export function normalizeScrapedPages(
   rawItems: any[],
   seenUrls: Set<string>
@@ -21,7 +44,7 @@ export function normalizeScrapedPages(
 
   for (const item of rawItems) {
     if (!item?.url || seenUrls.has(item.url)) continue;
-    
+
     const title = item.title || item.metadata?.title || 'Event Calendar Listing';
     const markdown = item.markdown || '';
     const rawHtml = item.rawHtml || item.html || '';
@@ -42,7 +65,6 @@ export function normalizeScrapedPages(
       markdown,
     });
 
-    // Keep legacy single-image field pointing at the top candidate
     const flyerImage = imageCandidates[0] || item.metadata?.image;
 
     pages.push({
@@ -62,7 +84,7 @@ export function normalizeScrapedPages(
 export interface ScoutCrawlOptions {
   prompt: string;
   location: string;
-  mode: ScoutEngineMode;
+  mode?: ScoutEngineMode;
   firecrawlKey: string;
   country?: string;
   when?: string;
@@ -74,12 +96,8 @@ export interface ScoutCrawlResult {
   vibeTags: string[];
 }
 
-/** Helper for sleep */
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * Executes a resilient search via Firecrawl with 429 backoff retry.
- */
 async function searchWithBackoff(
   firecrawl: FirecrawlApp,
   query: string,
@@ -101,12 +119,11 @@ async function searchWithBackoff(
 }
 
 /**
- * Executes either a fast single-pass crawl or deep multi-query crawl via Firecrawl.
+ * Executes bare-minimum fast single-pass search via Firecrawl.
  */
 export async function executeScoutCrawl({
   prompt,
   location,
-  mode,
   firecrawlKey,
   country,
   when,
@@ -114,101 +131,36 @@ export async function executeScoutCrawl({
   const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
   const seenUrls = new Set<string>();
   const allScrapedPages: ScrapedPageInput[] = [];
-  let queriesUsed: string[] = [];
-  let vibeTags: string[] = [];
 
   const targetCountry = country || process.env.FIRECRAWL_COUNTRY || 'US';
   const timeSuffix = when && when !== 'anytime' ? ` ${when}` : '';
 
-  if (mode === 'fast') {
-    // ⚡ Fast Scout Engine: Laser single-pass search without heavy LLM JSON schema
-    const laserQuery = `${prompt} in ${location} events calendar${timeSuffix}`;
-    queriesUsed = [laserQuery];
+  const laserQuery = `${prompt} in ${location} events calendar${timeSuffix}`;
+  const queriesUsed = [laserQuery];
 
-    console.log(
-      `[ScoutEngine] ⚡ Fast single-pass search: "${laserQuery}" [Country: ${targetCountry}]`
-    );
+  console.log(
+    `[ScoutEngine] ⚡ Fast single-pass search: "${laserQuery}" [Country: ${targetCountry}]`
+  );
 
-    const searchRes = await searchWithBackoff(firecrawl, laserQuery, {
-      limit: 4,
-      location,
-      country: targetCountry,
-      scrapeOptions: {
-        formats: ['rawHtml', 'markdown'],
-        onlyMainContent: true,
-      },
-    });
+  const searchRes = await searchWithBackoff(firecrawl, laserQuery, {
+    limit: 4,
+    location,
+    country: targetCountry,
+    scrapeOptions: {
+      formats: ['rawHtml', 'markdown'],
+      onlyMainContent: true,
+    },
+  });
 
-    const items = (searchRes as any)?.web || (searchRes as any)?.data || [];
-    const normalized = normalizeScrapedPages(items, seenUrls);
-    allScrapedPages.push(...normalized);
-  } else {
-    // 🔬 Deep Scout Engine: Multi-angle expansion + heavy LLM schemas + hub resolution
-    const queryResult = await generateDiscoveryQueries(prompt, location);
-    queriesUsed = queryResult.queries;
-    vibeTags = queryResult.vibeTags;
-
-    console.log(
-      `[ScoutEngine] 🔬 Deep crawl angles [Country: ${targetCountry}]:\n${queriesUsed
-        .map((q, i) => `  ${i + 1}. ${q}${timeSuffix}`)
-        .join('\n')}`
-    );
-
-    const searchSettled = await Promise.allSettled(
-      queriesUsed.map((q) =>
-        firecrawl.search(timeSuffix ? `${q}${timeSuffix}` : q, {
-          limit: 2,
-          location,
-          country: targetCountry,
-          scrapeOptions: {
-            formats: [
-              'markdown',
-              'rawHtml',
-              {
-                type: 'json',
-                schema: FIRECRAWL_EVENT_LIST_SCHEMA,
-                prompt: FIRECRAWL_EVENT_EXTRACTION_PROMPT,
-              },
-            ],
-            onlyMainContent: true,
-          },
-        })
-      )
-    );
-
-    for (const res of searchSettled) {
-      if (res.status === 'fulfilled') {
-        const items = (res.value as any)?.web || (res.value as any)?.data || [];
-        const normalized = normalizeScrapedPages(items, seenUrls);
-        allScrapedPages.push(...normalized);
-      }
-    }
-
-    // Direct Calendar Hub & Venue permalink resolution
-    try {
-      const hubPages = await resolveHubPermalinks(
-        firecrawl,
-        Array.from(seenUrls),
-        location,
-        seenUrls,
-        3
-      );
-      for (const p of hubPages) {
-        if (!seenUrls.has(p.url)) {
-          seenUrls.add(p.url);
-          allScrapedPages.push(p);
-        }
-      }
-    } catch (hubErr: any) {
-      console.warn('[ScoutEngine] Hub permalink resolution warning:', hubErr?.message || hubErr);
-    }
-  }
+  const items = (searchRes as any)?.web || (searchRes as any)?.data || [];
+  const normalized = normalizeScrapedPages(items, seenUrls);
+  allScrapedPages.push(...normalized);
 
   console.log(`[ScoutEngine] 📄 Crawl complete: ${allScrapedPages.length} unique pages ingested.`);
 
   return {
     allScrapedPages,
     queriesUsed,
-    vibeTags,
+    vibeTags: [],
   };
 }

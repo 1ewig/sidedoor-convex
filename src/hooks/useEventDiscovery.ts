@@ -99,12 +99,11 @@ export function useEventDiscovery() {
       });
 
       // Step 1: Query generation notice
-      const isFast = filters.scoutMode === 'fast';
       const startLog: ScoutLog = {
         id: `log-${Date.now()}-1`,
         timestamp: timeStr(),
         level: 'info',
-        message: `Agent scouting (${isFast ? '⚡ Fast' : '🔬 Deep'} • ${filters.when}): "${promptText}"`,
+        message: `Agent scouting (⚡ Fast • ${filters.when}): "${promptText}"`,
       };
       appendLog(startLog);
 
@@ -114,13 +113,11 @@ export function useEventDiscovery() {
           id: `log-${Date.now()}-2`,
           timestamp: timeStr(),
           level: 'scrape',
-          message: isFast
-            ? `⚡ Fast scan for ${filters.when} via venue calendars & JSON-LD...`
-            : `🔬 Deep multi-angle crawl for ${filters.when} across DIY venues & Linktrees...`,
+          message: `⚡ Fast scan for ${filters.when} via venue calendars & JSON-LD...`,
         };
         appendLog(crawlLog);
 
-        console.log(`🚀 Dispatching request to /api/scout [Mode: ${filters.scoutMode}, When: ${filters.when}]...`);
+        console.log(`🚀 Dispatching request to /api/scout [Fast Scout, When: ${filters.when}]...`);
 
         const res = await fetch('/api/scout', {
           method: 'POST',
@@ -193,7 +190,7 @@ export function useEventDiscovery() {
             id: `log-${Date.now()}-3`,
             timestamp: timeStr(),
             level: 'ai',
-            message: `Discovered ${data.events.length} gatherings via ${isFast ? '⚡ Fast Scout' : '🔬 Deep Scout'} in ${clientDuration}s!`,
+            message: `Discovered ${data.events.length} gatherings via ⚡ Fast Scout in ${clientDuration}s!`,
             details: `Gatherings: ${data.events.map((e: LocalEvent) => e.title).slice(0, 3).join(', ')}.`,
           };
           appendLog(successLog);

@@ -113,10 +113,8 @@ export function PageClient() {
           {/* Floating Dock */}
           <FloatingDock
             prompt={filters.query}
-            scoutMode={filters.scoutMode}
             isScouting={isScouting}
             onPromptChange={(val) => updateFilters({ query: val })}
-            onToggleMode={(mode) => updateFilters({ scoutMode: mode })}
             onTriggerDiscovery={handleTriggerDiscovery}
           />
         </section>
