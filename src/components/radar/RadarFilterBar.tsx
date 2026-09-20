@@ -52,33 +52,30 @@ export function RadarFilterBar({
         </button>
       </div>
 
-      {/* Active Filter Indicators & Result Count */}
-      <div className="flex items-center justify-between gap-3 flex-wrap pt-1 text-[var(--text-xs)]">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {filters.category !== 'all' && (
-            <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-secondary)] uppercase">
-              {filters.category}
-            </span>
-          )}
-          {filters.radiusKm && (
-            <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
-              ≤{filters.radiusKm} km
-            </span>
-          )}
-          {filters.onlyFree && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-secondary)]">
-              <Sparkles className="w-2.5 h-2.5" />
-              Free only
-            </span>
-          )}
-          {filters.minScore > 70 && (
-            <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
-              {filters.minScore}%+ match
-            </span>
-          )}
-        </div>
+      {/* Active Filter Indicators & Center-Aligned Result Count */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1 text-center">
+        {(filters.category !== 'all' || filters.onlyFree || filters.minScore > 70) && (
+          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+            {filters.category !== 'all' && (
+              <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-secondary)] uppercase">
+                {filters.category}
+              </span>
+            )}
+            {filters.onlyFree && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-secondary)]">
+                <Sparkles className="w-2.5 h-2.5" />
+                Free only
+              </span>
+            )}
+            {filters.minScore > 70 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
+                {filters.minScore}%+ match
+              </span>
+            )}
+          </div>
+        )}
 
-        <span className="font-mono text-[var(--text-2xs)] text-[var(--theme-text-muted)] shrink-0 ml-auto">
+        <span className="font-mono text-[var(--text-2xs)] text-[var(--theme-text-muted)]">
           Showing {filteredCount} {filteredCount === 1 ? 'gathering' : 'gatherings'}
         </span>
       </div>
