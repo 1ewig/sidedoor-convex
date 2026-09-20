@@ -1,4 +1,4 @@
-import { LocalEvent, EventCategory } from '@/types';
+import { LocalEvent } from '@/types';
 import { CandidateEvent, HybridDiscoveryResult, ScrapedPageInput } from '@/types/discovery';
 import { extractStructuredEventsFromHtml } from '../schema-org';
 import { extractFromUnstructuredMarkdown } from './deep-lane';
@@ -7,16 +7,7 @@ import { MAX_PIPELINE_CANDIDATES } from './config';
 import { getTemporalContext } from '../temporal';
 import { calculateHaversineDistanceKm } from '../geo';
 import { createCandidateId } from './id';
-
-function inferCategoryFromText(text: string): EventCategory {
-  const lower = text.toLowerCase();
-  if (/exhibition|art|gallery|vernissage|paint|sculpture|photo/i.test(lower)) return 'art';
-  if (/market|flea|vintage|craft|makers|bazaar/i.test(lower)) return 'market';
-  if (/food|dinner|tasting|chef|bakery|brunch|supper/i.test(lower)) return 'food';
-  if (/club|rave|techno|dj|dance|nightlife|disco/i.test(lower)) return 'nightlife';
-  if (/community|meetup|volunteer|garden|talk|reading/i.test(lower)) return 'community';
-  return 'music';
-}
+import { inferEventCategory } from './category';
 
 function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] {
   if (!page.extractedJson) return [];
@@ -48,7 +39,10 @@ function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] 
       id: createCandidateId('structured'),
       sourceLane: 'structured',
       title,
-      category: inferCategoryFromText(`${title} ${item.description || ''} ${venue}`),
+      category: inferEventCategory({
+        text: `${title} ${item.description || ''} ${venue}`,
+        schemaType: item.category || item.type,
+      }),
       venueName: venue,
       address,
       formattedDate,
@@ -58,7 +52,7 @@ function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] 
       coverImage,
       sourceUrl: item.ticketUrl || page.url,
       organizerName: venue,
-      organizerEmail: `booking@${venue.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+      organizerEmail: item.organizerEmail || item.email || '',
       rawSnippet: item.description?.slice(0, 300),
     });
   }

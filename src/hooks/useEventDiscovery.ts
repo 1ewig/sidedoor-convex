@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LocalEvent, ScoutLog, HybridDiscoveryStats } from '@/types';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { useLocationStore } from '@/state/useLocationStore';
+import { matchesSearchFilters } from '@/lib/discovery/filters';
 
 export function useEventDiscovery() {
   const [events, setEvents] = useState<LocalEvent[]>([]);
@@ -25,21 +26,7 @@ export function useEventDiscovery() {
 
   // Filtered events based on tuning preferences
   const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
-      // Radius check
-      if (event.distanceKm > filters.radiusKm) return false;
-
-      // Category check
-      if (filters.category !== 'all' && event.category !== filters.category) return false;
-
-      // Free filter
-      if (filters.onlyFree && !event.isFree) return false;
-
-      // Min score check
-      if (event.matchScore < filters.minScore) return false;
-
-      return true;
-    });
+    return events.filter((event) => matchesSearchFilters(event, filters));
   }, [events, filters]);
 
   // Trigger live multi-stage autonomous event discovery
@@ -150,13 +137,9 @@ export function useEventDiscovery() {
           );
 
           // Evaluation against active filters
-          const passingEvents = data.events.filter((event: LocalEvent) => {
-            if (event.distanceKm > filters.radiusKm) return false;
-            if (filters.category !== 'all' && event.category !== filters.category) return false;
-            if (filters.onlyFree && !event.isFree) return false;
-            if (event.matchScore < filters.minScore) return false;
-            return true;
-          });
+          const passingEvents = data.events.filter((event: LocalEvent) =>
+            matchesSearchFilters(event, filters)
+          );
 
           console.log(
             `🎯 Filter Result: %c${passingEvents.length} of ${data.events.length} events%c visible under current filter drawer settings.`,

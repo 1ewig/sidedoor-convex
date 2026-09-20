@@ -1,0 +1,159 @@
+import FirecrawlApp from '@mendable/firecrawl-js';
+import { ScrapedPageInput, ScoutEngineMode } from '@/types';
+import { generateDiscoveryQueries } from './query-planner';
+import { resolveHubPermalinks } from './hub-resolver';
+import {
+  FIRECRAWL_EVENT_LIST_SCHEMA,
+  FIRECRAWL_EVENT_EXTRACTION_PROMPT,
+} from './firecrawl-schema';
+
+/**
+ * Normalizes raw Firecrawl search items into typed ScrapedPageInput objects.
+ * Handles deduplication, ogImage resolution, and markdown flyer fallback.
+ */
+export function normalizeScrapedPages(
+  rawItems: any[],
+  seenUrls: Set<string>
+): ScrapedPageInput[] {
+  const pages: ScrapedPageInput[] = [];
+
+  for (const item of rawItems) {
+    if (!item?.url || seenUrls.has(item.url)) continue;
+    seenUrls.add(item.url);
+
+    const markdown = item.markdown || '';
+    const rawHtml = item.rawHtml || item.html || '';
+    const ogImage =
+      item.metadata?.ogImage ||
+      item.metadata?.['og:image'] ||
+      item.metadata?.image;
+
+    let flyerImage = ogImage;
+    if (!flyerImage) {
+      const mdImgMatch = markdown.match(
+        /!\[.*?\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp|avif)[^\s)]*)\)/i
+      );
+      if (mdImgMatch) flyerImage = mdImgMatch[1];
+    }
+
+    pages.push({
+      url: item.url,
+      title: item.title || item.metadata?.title || 'Event Calendar Listing',
+      markdown,
+      rawHtml,
+      ogImage: flyerImage,
+      extractedJson: item.json || null,
+    });
+  }
+
+  return pages;
+}
+
+export interface ScoutCrawlOptions {
+  prompt: string;
+  location: string;
+  mode: ScoutEngineMode;
+  firecrawlKey: string;
+}
+
+export interface ScoutCrawlResult {
+  allScrapedPages: ScrapedPageInput[];
+  queriesUsed: string[];
+  vibeTags: string[];
+}
+
+/**
+ * Executes either a fast single-pass crawl or deep multi-query crawl via Firecrawl.
+ */
+export async function executeScoutCrawl({
+  prompt,
+  location,
+  mode,
+  firecrawlKey,
+}: ScoutCrawlOptions): Promise<ScoutCrawlResult> {
+  const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
+  const seenUrls = new Set<string>();
+  const allScrapedPages: ScrapedPageInput[] = [];
+  let queriesUsed: string[] = [];
+  let vibeTags: string[] = [];
+
+  if (mode === 'fast') {
+    // ⚡ Fast Scout Engine: Laser single-pass search without heavy LLM JSON schema
+    const laserQuery = `${prompt} in ${location} events calendar`;
+    queriesUsed = [laserQuery];
+
+    const searchRes = await firecrawl.search(laserQuery, {
+      limit: 3,
+      location,
+      country: 'US',
+      scrapeOptions: {
+        formats: ['rawHtml', 'markdown'],
+        onlyMainContent: true,
+      },
+    });
+
+    const items = (searchRes as any)?.web || (searchRes as any)?.data || [];
+    const normalized = normalizeScrapedPages(items, seenUrls);
+    allScrapedPages.push(...normalized);
+  } else {
+    // 🔬 Deep Scout Engine: Multi-angle expansion + heavy LLM schemas + hub resolution
+    const queryResult = await generateDiscoveryQueries(prompt, location);
+    queriesUsed = queryResult.queries;
+    vibeTags = queryResult.vibeTags;
+
+    const searchSettled = await Promise.allSettled(
+      queriesUsed.map((q) =>
+        firecrawl.search(q, {
+          limit: 2,
+          location,
+          country: 'US',
+          scrapeOptions: {
+            formats: [
+              'markdown',
+              'rawHtml',
+              {
+                type: 'json',
+                schema: FIRECRAWL_EVENT_LIST_SCHEMA,
+                prompt: FIRECRAWL_EVENT_EXTRACTION_PROMPT,
+              },
+            ],
+            onlyMainContent: true,
+          },
+        })
+      )
+    );
+
+    for (const res of searchSettled) {
+      if (res.status === 'fulfilled') {
+        const items = (res.value as any)?.web || (res.value as any)?.data || [];
+        const normalized = normalizeScrapedPages(items, seenUrls);
+        allScrapedPages.push(...normalized);
+      }
+    }
+
+    // Direct Calendar Hub & Venue permalink resolution
+    try {
+      const hubPages = await resolveHubPermalinks(
+        firecrawl,
+        Array.from(seenUrls),
+        location,
+        seenUrls,
+        3
+      );
+      for (const p of hubPages) {
+        if (!seenUrls.has(p.url)) {
+          seenUrls.add(p.url);
+          allScrapedPages.push(p);
+        }
+      }
+    } catch (hubErr: any) {
+      console.warn('[ScoutEngine] Hub permalink resolution warning:', hubErr?.message || hubErr);
+    }
+  }
+
+  return {
+    allScrapedPages,
+    queriesUsed,
+    vibeTags,
+  };
+}

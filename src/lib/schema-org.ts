@@ -1,7 +1,7 @@
-import { EventCategory } from '@/types';
 import { CandidateEvent } from '@/types/discovery';
 import { cleanHtmlText } from './html';
 import { createCandidateId } from './discovery/id';
+import { inferEventCategory } from './discovery/category';
 
 /**
  * Lane A: Deterministic Schema.org / JSON-LD pre-parser.
@@ -231,14 +231,11 @@ function appendStructuredCandidate(
     }
   }
 
-  // Category inference
-  let category: EventCategory = 'music';
-  const itemType = item['@type'];
-  const typeStr = Array.isArray(itemType) ? itemType.join(' ') : String(itemType || '');
-  if (/Exhibition|VisualArts|Art/i.test(typeStr)) category = 'art';
-  else if (/Food|SaleEvent|Market/i.test(typeStr)) category = 'market';
-  else if (/Social|Community/i.test(typeStr)) category = 'community';
-  else if (/Dance|Club|Nightlife/i.test(typeStr)) category = 'nightlife';
+  // Category inference via shared helper
+  const category = inferEventCategory({
+    text: `${parsed.title} ${item.description || ''} ${parsed.venueName}`,
+    schemaType: item['@type'],
+  });
 
   candidates.push({
     id: createCandidateId('structured'),

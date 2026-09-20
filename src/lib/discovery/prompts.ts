@@ -55,5 +55,5 @@ For each candidate:
 2. Write a captivating, editorial 1-line tagline.
 3. Write a vivid 2-sentence atmosphere overview.
 4. Assign 3-4 aesthetic hashtags.
-5. If the original candidate is missing a contact email, generate a reasonable booking contact (booking@<venue>.org).`;
+5. If the original candidate includes a verified contact email, preserve it. Otherwise leave suggestedOrganizerEmail empty.`;
 }

@@ -80,7 +80,7 @@ export async function extractFromUnstructuredMarkdown(
     coverImage: pages[0]?.ogImage,
     sourceUrl: pages[0]?.url || '',
     organizerName: evt.organizerName || evt.venueName,
-    organizerEmail: evt.organizerEmail || `booking@${evt.venueName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+    organizerEmail: evt.organizerEmail || '',
     rawSnippet: evt.description,
   }));
 }

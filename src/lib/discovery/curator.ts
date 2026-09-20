@@ -89,7 +89,7 @@ export async function curateCandidatesWithLLM(
       matchScore: curation?.matchScore || 85,
       vibeTags: curation?.vibeTags || ['#Local', '#Culture', '#DIY'],
       organizerName: cand.organizerName || cand.venueName,
-      organizerEmail: cand.organizerEmail || curation?.suggestedOrganizerEmail || `booking@${cand.venueName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+      organizerEmail: cand.organizerEmail || curation?.suggestedOrganizerEmail || '',
       sourceUrl: cand.sourceUrl,
       firecrawlExtractedAt: `Hybrid (${cand.sourceLane})`,
       coverImage: cand.coverImage,
