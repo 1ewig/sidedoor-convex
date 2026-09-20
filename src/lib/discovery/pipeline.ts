@@ -6,6 +6,7 @@ import { MAX_PIPELINE_CANDIDATES } from './config';
 import { getTemporalContext } from '../temporal';
 import { createCandidateId } from './id';
 import { inferEventCategory } from './category';
+import { toAbsoluteImageUrl } from '../images';
 
 function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] {
   if (!page.extractedJson) return [];
@@ -29,7 +30,13 @@ function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] 
     const address = item.address?.trim() || venue;
     const price = item.price ? String(item.price).trim() : (item.isFree ? 'Free Entry' : 'Door / RSVP');
     const isFree = item.isFree === true || /free|pwyc/i.test(price);
-    const coverImage = item.imageUrl || page.ogImage;
+    // Ranked candidates: Firecrawl-extracted imageUrl first, then page-level images.
+    const extracted = toAbsoluteImageUrl(item.imageUrl, page.url);
+    const pageCandidates = page.imageCandidates || (page.ogImage ? [page.ogImage] : []);
+    const imageCandidates = extracted
+      ? [extracted, ...pageCandidates.filter((u) => u !== extracted)]
+      : pageCandidates;
+    const coverImage = imageCandidates[0];
     const formattedDate = item.date?.trim() || 'This Weekend';
     const formattedTime = (item.doorTime || item.time || '8:00 PM').trim();
 
@@ -48,6 +55,7 @@ function parseFirecrawlJsonCandidates(page: ScrapedPageInput): CandidateEvent[] 
       price,
       isFree,
       coverImage,
+      coverImages: imageCandidates,
       sourceUrl: item.ticketUrl || page.url,
       organizerName: venue,
       organizerEmail: item.organizerEmail || item.email || '',

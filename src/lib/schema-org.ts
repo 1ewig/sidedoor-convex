@@ -2,6 +2,7 @@ import { CandidateEvent } from '@/types/discovery';
 import { cleanHtmlText } from './html';
 import { createCandidateId } from './discovery/id';
 import { inferEventCategory } from './discovery/category';
+import { harvestImageCandidates } from './images';
 
 /**
  * Lane A: Deterministic Schema.org / JSON-LD pre-parser.
@@ -188,17 +189,14 @@ function appendStructuredCandidate(
     isFree = true;
   }
 
-  // Flyer image
-  let coverImage = parsed.ogImage;
-  if (item.image) {
-    if (typeof item.image === 'string') {
-      coverImage = item.image;
-    } else if (Array.isArray(item.image) && typeof item.image[0] === 'string') {
-      coverImage = item.image[0];
-    } else if (item.image.url) {
-      coverImage = item.image.url;
-    }
-  }
+  // Flyer image candidates (ranked, de-junked, absolute). JSON-LD image wins
+  // over the page-level og:image when present.
+  const imageCandidates = harvestImageCandidates({
+    pageUrl: parsed.url,
+    ogImage: parsed.ogImage,
+    jsonLdImage: item.image,
+  });
+  const coverImage = imageCandidates[0];
 
   // Formatted Date & Time
   let formattedDate = 'This Weekend';
@@ -251,6 +249,7 @@ function appendStructuredCandidate(
     price,
     isFree,
     coverImage,
+    coverImages: imageCandidates,
     sourceUrl: item.url || parsed.url,
     organizerName,
     organizerEmail,

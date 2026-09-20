@@ -6,6 +6,7 @@ import {
   FIRECRAWL_EVENT_LIST_SCHEMA,
   FIRECRAWL_EVENT_EXTRACTION_PROMPT,
 } from './firecrawl-schema';
+import { harvestImageCandidates } from '../images';
 
 /**
  * Normalizes raw Firecrawl search items into typed ScrapedPageInput objects.
@@ -23,18 +24,18 @@ export function normalizeScrapedPages(
 
     const markdown = item.markdown || '';
     const rawHtml = item.rawHtml || item.html || '';
-    const ogImage =
-      item.metadata?.ogImage ||
-      item.metadata?.['og:image'] ||
-      item.metadata?.image;
 
-    let flyerImage = ogImage;
-    if (!flyerImage) {
-      const mdImgMatch = markdown.match(
-        /!\[.*?\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|webp|avif)[^\s)]*)\)/i
-      );
-      if (mdImgMatch) flyerImage = mdImgMatch[1];
-    }
+    // Harvest a ranked, de-junked, absolute candidate list (Layer 1)
+    const imageCandidates = harvestImageCandidates({
+      pageUrl: item.url,
+      ogImage: item.metadata?.ogImage || item.metadata?.['og:image'],
+      twitterImage: item.metadata?.twitterImage || item.metadata?.['twitter:image'],
+      extractedImageUrl: item.json?.imageUrl,
+      markdown,
+    });
+
+    // Keep legacy single-image field pointing at the top candidate
+    const flyerImage = imageCandidates[0] || item.metadata?.image;
 
     pages.push({
       url: item.url,
@@ -42,6 +43,7 @@ export function normalizeScrapedPages(
       markdown,
       rawHtml,
       ogImage: flyerImage,
+      imageCandidates,
       ...(item.json ? { extractedJson: item.json } : {}),
     });
   }

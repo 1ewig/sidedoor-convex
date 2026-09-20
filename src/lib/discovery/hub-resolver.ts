@@ -4,6 +4,7 @@ import {
   FIRECRAWL_SINGLE_EVENT_SCHEMA,
   FIRECRAWL_PERMALINK_EXTRACTION_PROMPT,
 } from './firecrawl-schema';
+import { harvestImageCandidates } from '../images';
 
 /**
  * Known platforms and domain patterns that host calendar listings and direct event permalinks.
@@ -154,7 +155,15 @@ export async function resolveHubPermalinks(
       if (res.status === 'fulfilled') {
         const doc = res.value as any;
         const metadata = doc.metadata || {};
-        const ogImage = metadata.ogImage || metadata['og:image'] || metadata.image;
+
+        const imageCandidates = harvestImageCandidates({
+          pageUrl: url,
+          ogImage: metadata.ogImage || metadata['og:image'],
+          twitterImage: metadata.twitterImage || metadata['twitter:image'],
+          extractedImageUrl: doc.json?.imageUrl,
+          markdown: doc.markdown || '',
+        });
+        const ogImage = imageCandidates[0] || metadata.image;
 
         pages.push({
           url,
@@ -162,6 +171,7 @@ export async function resolveHubPermalinks(
           markdown: doc.markdown || '',
           rawHtml: doc.rawHtml || '',
           ogImage,
+          imageCandidates,
           extractedJson: doc.json || null,
         });
       } else {

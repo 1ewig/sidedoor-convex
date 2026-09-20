@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { MapPin, Sparkles, Clock, Ticket, ArrowUpRight, Check } from 'lucide-react';
 import { LocalEvent } from '@/types';
+import { EventImage } from '@/components/ui/EventImage';
 
 interface EventCardProps {
   event: LocalEvent;
@@ -21,6 +21,12 @@ const CATEGORY_STYLES: Record<string, string> = {
 export function EventCard({ event, onSelect }: EventCardProps) {
   const isSent = event.outreachStatus === 'sent' || event.outreachStatus === 'replied';
   const categoryClass = CATEGORY_STYLES[event.category] || CATEGORY_STYLES.music;
+  const thumbnailImages =
+    event.coverImages && event.coverImages.length > 0
+      ? event.coverImages
+      : event.coverImage
+      ? [event.coverImage]
+      : [];
 
   return (
     <button
@@ -83,15 +89,14 @@ export function EventCard({ event, onSelect }: EventCardProps) {
           )}
         </div>
 
-        {/* Compact Flyer Thumbnail */}
-        {event.coverImage && (
+        {/* Compact Flyer Thumbnail (resilient, walks candidates) */}
+        {thumbnailImages.length > 0 && (
           <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] shrink-0">
-            <Image
-              src={event.coverImage}
+            <EventImage
+              images={thumbnailImages}
               alt={event.title}
-              fill
-              unoptimized
               sizes="64px"
+              fallbackLabel={event.venueName}
               className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           </div>

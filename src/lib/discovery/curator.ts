@@ -5,6 +5,7 @@ import { EventCategory, LocalEvent, Coordinates } from '@/types';
 import { CandidateEvent } from '@/types/discovery';
 import { getGoogleApiKey, SIDEDOOR_MODEL } from './config';
 import { buildCuratorSystemPrompt } from './prompts';
+import { pickValidatedImage } from '../images';
 import { toEventId } from './id';
 import { calculateHaversineDistanceKm } from '../geo';
 
@@ -88,6 +89,19 @@ export async function curateCandidatesWithLLM(
       );
     }
 
+    // Layer 1 validation: prefer a candidate that verifiably serves a real
+    // image, then order the validated winner first for the UI fallback walk.
+    const rawImages = (cand.coverImages && cand.coverImages.length > 0
+      ? cand.coverImages
+      : cand.coverImage
+      ? [cand.coverImage]
+      : []
+    );
+    const validatedImage = await pickValidatedImage(rawImages, 3);
+    const coverImages = validatedImage
+      ? [validatedImage, ...rawImages.filter((u) => u !== validatedImage)]
+      : rawImages;
+
     finalEvents.push({
       id: toEventId(cand.id),
       title: cand.title,
@@ -109,7 +123,8 @@ export async function curateCandidatesWithLLM(
       organizerEmail: cand.organizerEmail || curation?.suggestedOrganizerEmail || '',
       sourceUrl: cand.sourceUrl,
       firecrawlExtractedAt: `Hybrid (${cand.sourceLane})`,
-      coverImage: cand.coverImage,
+      coverImage: coverImages[0],
+      coverImages,
       outreachStatus: 'none',
     });
   }

@@ -28,6 +28,8 @@ export interface LocalEvent {
   firecrawlExtractedAt: string;
   ticketsRemaining?: number;
   coverImage?: string;
+  /** Ranked flyer image candidates walked by the UI on load failure. */
+  coverImages?: string[];
   outreachStatus?: 'none' | 'sent' | 'replied';
 }
 

@@ -11,6 +11,8 @@ export interface ScrapedPageInput {
   markdown: string;
   rawHtml?: string;
   ogImage?: string;
+  /** Ranked, de-junked, absolute flyer image candidates harvested at ingest time. */
+  imageCandidates?: string[];
   extractedJson?: any;
 }
 
@@ -28,6 +30,8 @@ export interface CandidateEvent {
   price: string;
   isFree: boolean;
   coverImage?: string;
+  /** Ranked flyer image candidates for client-side fallback. */
+  coverImages?: string[];
   sourceUrl: string;
   organizerName?: string;
   organizerEmail?: string;

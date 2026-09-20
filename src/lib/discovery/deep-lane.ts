@@ -93,6 +93,7 @@ export async function extractFromUnstructuredMarkdown(
       price: evt.price,
       isFree: evt.isFree || /free|pwyc/i.test(evt.price),
       coverImage: sourcePage?.ogImage,
+      coverImages: sourcePage?.imageCandidates || (sourcePage?.ogImage ? [sourcePage.ogImage] : []),
       sourceUrl: sourcePage?.url || '',
       organizerName: evt.organizerName || evt.venueName,
       organizerEmail: evt.organizerEmail || '',

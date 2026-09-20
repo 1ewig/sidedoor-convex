@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import Image from 'next/image';
 import {
   X,
   MapPin,
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { LocalEvent } from '@/types';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
+import { EventImage } from '@/components/ui/EventImage';
 
 interface EventDetailModalProps {
   event: LocalEvent | null;
@@ -55,6 +55,12 @@ export function EventDetailModal({
 
   const isSent = event.outreachStatus === 'sent' || event.outreachStatus === 'replied';
   const categoryClass = CATEGORY_STYLES[event.category] || CATEGORY_STYLES.music;
+  const heroImages =
+    event.coverImages && event.coverImages.length > 0
+      ? event.coverImages
+      : event.coverImage
+      ? [event.coverImage]
+      : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
@@ -98,15 +104,14 @@ export function EventDetailModal({
 
         {/* Scrollable Modal Body */}
         <div className="overflow-y-auto px-5 sm:px-6 py-5 space-y-5">
-          {/* Flyer / Hero Image */}
-          {event.coverImage && (
+          {/* Flyer / Hero Image (resilient, walks candidates) */}
+          {heroImages.length > 0 && (
             <div className="relative w-full h-52 sm:h-64 rounded-2xl overflow-hidden bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)]">
-              <Image
-                src={event.coverImage}
+              <EventImage
+                images={heroImages}
                 alt={event.title}
-                fill
-                unoptimized
                 sizes="(max-width: 768px) 100vw, 672px"
+                fallbackLabel={event.venueName}
                 className="object-cover"
               />
             </div>
