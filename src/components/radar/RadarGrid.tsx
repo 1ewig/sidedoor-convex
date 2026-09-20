@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Compass, RotateCcw } from 'lucide-react';
+import { Compass, RotateCcw, ArrowUpRight } from 'lucide-react';
 import { LocalEvent } from '@/types';
 import { EventCard } from '@/components/discovery/EventCard';
 
@@ -10,6 +10,8 @@ interface RadarGridProps {
   isLoading: boolean;
   onSelectEvent: (event: LocalEvent) => void;
   onResetFilters: () => void;
+  locationLabel?: string;
+  radiusKm?: number;
 }
 
 export function RadarGrid({
@@ -17,7 +19,14 @@ export function RadarGrid({
   isLoading,
   onSelectEvent,
   onResetFilters,
+  locationLabel,
+  radiusKm = 20,
 }: RadarGridProps) {
+  const displayLocation =
+    locationLabel && locationLabel !== 'Detecting location...'
+      ? locationLabel
+      : 'your area';
+
   if (isLoading) {
     return (
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 pb-20">
@@ -40,10 +49,10 @@ export function RadarGrid({
           <Compass className="w-6 h-6" />
         </div>
         <h3 className="font-serif text-[var(--text-lg)] text-[var(--theme-text-primary)] mb-2">
-          No gatherings match this radar angle
+          No gatherings found within {radiusKm} km of {displayLocation}
         </h3>
         <p className="text-[var(--text-xs)] text-[var(--theme-text-muted)] max-w-sm mx-auto mb-6 leading-[var(--leading-relaxed)]">
-          Try clearing your search query or category filter, or dispatch an autonomous agent from the Studio to scout your city.
+          The radar only displays gatherings in your immediate area. You can expand your radius in Tuning or dispatch an autonomous scout from the Studio to uncover local happenings.
         </p>
         <div className="flex items-center justify-center gap-3">
           <button
@@ -58,7 +67,8 @@ export function RadarGrid({
             href="/main"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] hover:opacity-90 text-[var(--text-xs)] font-medium transition-all shadow-xs"
           >
-            <span>Launch New Scout ↗</span>
+            <span>Scout My Area</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>
