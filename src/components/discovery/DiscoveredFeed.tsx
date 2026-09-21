@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Loader2, Zap, X } from 'lucide-react';
 import { LocalEvent, HybridDiscoveryStats } from '@/types';
 import { EventCard } from './EventCard';
@@ -28,6 +28,18 @@ export function DiscoveredFeed({
   onSelectEvent,
   onDismissBatch,
 }: DiscoveredFeedProps) {
+  const [activeStage, setActiveStage] = useState<1 | 2 | 3>(1);
+
+  useEffect(() => {
+    if (!isScouting) return;
+    const t1 = setTimeout(() => setActiveStage(2), 3000);
+    const t2 = setTimeout(() => setActiveStage(3), 7000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      setActiveStage(1);
+    };
+  }, [isScouting]);
   const batches = useMemo(() => {
     const result: EventBatch[] = [];
     let currentBatch: EventBatch | null = null;
@@ -108,23 +120,49 @@ export function DiscoveredFeed({
                   Autonomous Scout Active
                 </h4>
                 <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans">
-                  Scanning indie venue calendars, underground flyers, and local community boards...
+                  {activeStage === 1 && 'Scanning indie venue calendars, underground flyers, and local community boards...'}
+                  {activeStage === 2 && 'Extracting dates, venue addresses, door policies, and JSON-LD structured data...'}
+                  {activeStage === 3 && 'Gemini evaluating vibe compatibility, ticket availability, and editorial curation...'}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-[var(--theme-border-subtle)] text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)]">
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-text-primary)]" />
-                <span>1. Exploring sources</span>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    activeStage >= 1
+                      ? 'bg-[var(--theme-text-primary)]'
+                      : 'bg-[var(--theme-border-strong)]'
+                  } ${activeStage === 1 ? 'animate-pulse' : ''}`}
+                />
+                <span className={activeStage === 1 ? 'text-[var(--theme-text-primary)] font-medium' : ''}>
+                  1. Exploring sources
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-text-primary)] animate-pulse" />
-                <span>2. Verifying details</span>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    activeStage >= 2
+                      ? 'bg-[var(--theme-text-primary)]'
+                      : 'bg-[var(--theme-border-strong)]'
+                  } ${activeStage === 2 ? 'animate-pulse' : ''}`}
+                />
+                <span className={activeStage === 2 ? 'text-[var(--theme-text-primary)] font-medium' : ''}>
+                  2. Verifying details
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-border-strong)]" />
-                <span>3. Matching vibe</span>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    activeStage >= 3
+                      ? 'bg-[var(--theme-text-primary)]'
+                      : 'bg-[var(--theme-border-strong)]'
+                  } ${activeStage === 3 ? 'animate-pulse' : ''}`}
+                />
+                <span className={activeStage === 3 ? 'text-[var(--theme-text-primary)] font-medium' : ''}>
+                  3. Matching vibe
+                </span>
               </div>
             </div>
           </div>

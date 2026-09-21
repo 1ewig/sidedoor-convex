@@ -161,7 +161,7 @@ export async function executeScoutCrawl({
   );
 
   const searchRes = await searchWithBackoff(firecrawl, searchQuery, {
-    limit: 4,
+    limit: 3,
     location: effectiveLocation,
     country: targetCountry,
     scrapeOptions: {
@@ -169,7 +169,7 @@ export async function executeScoutCrawl({
       onlyMainContent: true,
       blockAds: true,
       removeBase64Images: true,
-      timeout: 6000,
+      timeout: 4500,
       maxAge: 3600000,
     },
   });

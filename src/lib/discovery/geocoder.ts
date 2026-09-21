@@ -24,22 +24,19 @@ export async function geocodeVenueOrAddress(
   const cleanAddr = address?.trim() || '';
   const cleanLoc = locationHint?.trim() || '';
 
-  // Generate candidate search queries from most specific to broader
+  // Generate top candidate search queries (capped at 2 to minimize network latency)
   const candidateQueries: string[] = [];
 
   if (cleanVenue && cleanAddr && cleanVenue.toLowerCase() !== cleanAddr.toLowerCase()) {
-    candidateQueries.push(`${cleanVenue}, ${cleanAddr}, ${cleanLoc}`);
-    candidateQueries.push(`${cleanVenue}, ${cleanAddr}`);
-    candidateQueries.push(`${cleanAddr}, ${cleanLoc}`);
     candidateQueries.push(`${cleanVenue}, ${cleanLoc}`);
-    candidateQueries.push(`${cleanAddr}`);
-    candidateQueries.push(`${cleanVenue}`);
-  } else if (cleanAddr) {
-    candidateQueries.push(`${cleanAddr}, ${cleanLoc}`);
-    candidateQueries.push(`${cleanAddr}`);
+    candidateQueries.push(`${cleanVenue}, ${cleanAddr}`);
   } else if (cleanVenue) {
     candidateQueries.push(`${cleanVenue}, ${cleanLoc}`);
-    candidateQueries.push(`${cleanVenue}`);
+    if (cleanVenue.length >= 8 && !cleanVenue.toLowerCase().includes('local venue')) {
+      candidateQueries.push(cleanVenue);
+    }
+  } else if (cleanAddr) {
+    candidateQueries.push(`${cleanAddr}, ${cleanLoc}`);
   }
 
   // Filter out empty, generic, or duplicate queries
@@ -50,7 +47,8 @@ export async function geocodeVenueOrAddress(
       if (q.length < 4 || seenQueries.has(q)) return false;
       seenQueries.add(q);
       return true;
-    });
+    })
+    .slice(0, 2);
 
   for (const q of validQueries) {
     const key = normalizeKey(q);
@@ -66,7 +64,7 @@ export async function geocodeVenueOrAddress(
         headers: {
           'User-Agent': 'SideDoor-Scout/1.0 (contact@sidedoor.app)',
         },
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(1200),
       });
 
       if (res.ok) {
@@ -101,7 +99,7 @@ export async function geocodeVenueOrAddress(
         headers: {
           'User-Agent': 'SideDoor-Scout/1.0 (contact@sidedoor.app)',
         },
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(1200),
       });
 
       if (res.ok) {

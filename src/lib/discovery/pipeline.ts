@@ -53,10 +53,13 @@ export async function runHybridEventDiscovery(
     }
   }
 
-  // Process Lane B fallback if any pages lacked JSON-LD or mined items
+  // Process Lane B fallback only if Lane A found insufficient candidates (< 3)
   let laneB_Candidates: CandidateEvent[] = [];
-  if (laneB_Pages.length > 0) {
+  if (laneA_Candidates.length < 3 && laneB_Pages.length > 0) {
+    console.log(`[Pipeline] ⚡ Lane A found ${laneA_Candidates.length} candidates, running Lane B fallback...`);
     laneB_Candidates = await extractFromUnstructuredMarkdown(laneB_Pages, userPrompt, locationHint);
+  } else if (laneB_Pages.length > 0) {
+    console.log(`[Pipeline] ⚡ Lane A found ${laneA_Candidates.length} structured candidates, skipping Lane B fallback.`);
   }
 
   console.log(
