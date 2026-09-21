@@ -1,6 +1,6 @@
 import { CandidateEvent } from '@/types/discovery';
-import { cleanHtmlText } from './html';
-import { createCandidateId, inferEventCategory } from './discovery';
+import { cleanHtmlText, cleanText } from './html';
+import { createCandidateId, inferEventCategory, cleanVenueName } from './discovery';
 import { harvestImageCandidates } from './images';
 
 /**
@@ -69,7 +69,7 @@ export function extractStructuredEventsFromHtml(
       collectItems(parsed);
 
       for (const item of itemsToInspect) {
-        const title = cleanHtmlText(item.name || item.headline || item.summary);
+        const title = cleanText(cleanHtmlText(item.name || item.headline || item.summary));
         if (!title) continue;
 
         // Temporal filter (if date available)
@@ -94,7 +94,7 @@ export function extractStructuredEventsFromHtml(
 
         // Venue & Address
         const locationNode = item.location || {};
-        const venueName = cleanHtmlText(
+        const venueName = cleanVenueName(
           typeof locationNode === 'string'
             ? locationNode
             : locationNode.name || 'Local Venue'

@@ -252,12 +252,50 @@ export function isValidEventTitle(title?: string): boolean {
     .replace(/[0-9]/g, '');
   if (withoutTimeOrPunct.length < 3) return false;
 
-  // Reject generic listing prefixes or metadata labels
-  if (/^(?:top|events?|calendar|things to do|upcoming|tickets|location|venue|where|when|details|admission|price)\s*[:\-–]?\s*$/i.test(cleaned)) {
+  // Reject generic listing prefixes, metadata labels, or table column headers
+  if (
+    /^(?:top|events?|calendar|things to do|upcoming|tickets|location|venue|where|when|details|admission|price|performer|performers|artist|artists|musician|musicians|band|bands|act|acts|lineup|schedule|doors?|show|time|date|status|action|buy tickets?|rsvp|more info|view event|tba|tbd)\s*[:\-–]?\s*$/i.test(
+      cleaned
+    )
+  ) {
     return false;
   }
 
   return true;
+}
+
+const GENERIC_VENUE_WORDS = /^(shows?|events?|calendar|tickets?|schedule|upcoming|whats?\s*on|live\s*music|directory|home|official\s*site|guide|selected\s*guide)\b/i;
+const SEO_SUFFIXES = /\b(?:concerts?|shows?|tickets?|calendar|live\s*music|nyc\s*events?|events?\s*calendar|guide|official\s*site|historic\s*.*jazz\s*bar|things\s*to\s*do|selected\s*gallery\s*guide.*)$/i;
+
+export function cleanVenueName(str?: string): string {
+  if (!str) return 'Local Venue';
+  let cleaned = cleanText(str);
+
+  // If there are parentheses containing a plausible venue name: e.g. "Daily Live Jazz... (Arthur's Tavern)"
+  const parenMatch = cleaned.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    const inside = parenMatch[1].trim();
+    if (inside.length >= 3 && !GENERIC_VENUE_WORDS.test(inside)) {
+      cleaned = inside;
+    }
+  }
+
+  // Split by common title separators
+  const parts = cleaned.split(/\s+[|\-–—•·:]\s+/);
+  if (parts.length > 1) {
+    const candidates = parts
+      .map((p) => p.trim())
+      .filter((p) => p.length >= 3 && !GENERIC_VENUE_WORDS.test(p));
+
+    if (candidates.length > 0) {
+      cleaned = candidates[0];
+    }
+  }
+
+  // Clean trailing SEO fluff
+  cleaned = cleaned.replace(SEO_SUFFIXES, '').replace(/^[|\-–—•·:\s]+|[|\-–—•·:\s]+$/g, '').trim();
+
+  return cleaned || 'Local Venue';
 }
 
 export function mineListingEvents(page: ScrapedPageInput, maxEvents = 6): CandidateEvent[] {
@@ -294,13 +332,13 @@ export function mineListingEvents(page: ScrapedPageInput, maxEvents = 6): Candid
 
     if (!isValidEventTitle(title)) continue;
 
-    let venueName = cleanText(page.title || 'Local Venue');
+    let venueName = cleanVenueName(page.title);
     if (i + 1 < segments.length) {
       const nextSeg = segments[i + 1];
       if (!parseDateText(nextSeg, now).iso && nextSeg.length >= 3 && nextSeg.length <= 60) {
         const nextClean = cleanText(stripDateTimeText(nextSeg));
         if (nextClean.length >= 3 && !/^[$€£0-9]/.test(nextClean) && !/^(?:free|rsvps?|tickets?|door)/i.test(nextClean)) {
-          venueName = nextClean;
+          venueName = cleanVenueName(nextClean);
         }
       }
     }

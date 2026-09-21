@@ -38,6 +38,8 @@ export function cleanHtmlText(str?: string): string {
       const code = parseInt(hex, 16);
       return !isNaN(code) && code > 0 && code < 0x10ffff ? String.fromCodePoint(code) : '';
     })
+    // Strip raw HTML tags: e.g. <br>, <br/>, <p>, <span>, <div>, etc.
+    .replace(/<[^>]+>/g, ' ')
     .trim();
 }
 
@@ -56,10 +58,12 @@ export function stripMarkdown(str?: string): string {
     .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
     .replace(/_{1,3}([^_]+)_{1,3}/g, '$1')
     .replace(/[*_~`\\]/g, '')
-    // Strip markdown header hashes: ### Title -> Title
-    .replace(/^#+\s*/g, '')
+    // Strip markdown header hashes anywhere in text: ### Title -> Title
+    .replace(/#+\s*/g, '')
     // Strip common metadata label prefixes often scraped with text: e.g. "Location: Venue Name" -> "Venue Name"
     .replace(/^(?:location|venue|where|at|place):\s*/i, '')
+    // Strip leading list numbers: e.g. "1. " or "5 "
+    .replace(/^[0-9]+[.)\s-]+\s*/, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

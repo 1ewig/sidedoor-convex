@@ -6,7 +6,7 @@ import { CandidateEvent } from '@/types/discovery';
 import { pickValidatedImage } from '../images';
 import { calculateHaversineDistanceKm } from '../geo';
 import { cleanText } from '../html';
-import { toEventId, isValidEventTitle } from './extraction';
+import { toEventId, isValidEventTitle, cleanVenueName } from './extraction';
 import { getGoogleApiKey, SIDEDOOR_MODEL } from './query-refiner';
 import { geocodeVenueOrAddress } from './geocoder';
 
@@ -160,8 +160,8 @@ export async function curateCandidatesWithLLM(
   const compactCandidates = validCandidates.map((c) => ({
     id: c.id,
     title: cleanText(c.title),
-    venue: cleanText(c.venueName),
-    location: c.address ? cleanText(c.address) : cleanText(c.venueName),
+    venue: cleanVenueName(c.venueName),
+    location: c.address ? cleanText(c.address) : cleanVenueName(c.venueName),
     date: c.formattedDate,
     price: c.price,
     notes: c.rawSnippet || '',
@@ -266,7 +266,7 @@ For each candidate:
         : rawImages;
 
       const cleanTitle = cleanText(cand.title);
-      const cleanVenue = cleanText(cand.venueName);
+      const cleanVenue = cleanVenueName(cand.venueName);
       const cleanAddress = cand.address ? cleanText(cand.address) : cleanVenue;
 
       return {
