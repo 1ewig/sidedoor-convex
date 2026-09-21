@@ -25,24 +25,35 @@ export function RadarFilterBar({
     filters.radiusKm !== 20;
 
   return (
-    <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 mb-8 space-y-3">
+    <div className="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 mb-8 space-y-3">
       {/* Search Input and Tuning Drawer Trigger */}
-      <div className="flex items-center gap-3">
-        <div className="relative w-full flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--theme-text-muted)]" />
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Search Dock */}
+        <div className="flex-1 bg-[var(--theme-bg-surface)] rounded-full pl-5 pr-4 py-2 sm:pl-6 sm:pr-4 sm:py-2.5 shadow-[var(--shadow-ambient)] border border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)] focus-within:border-[var(--theme-text-primary)]/40 focus-within:shadow-[var(--shadow-float)] transition-all flex items-center gap-2.5 sm:gap-3">
+          <Search className="w-4 h-4 text-[var(--theme-text-muted)] shrink-0" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search by venue, artist, vibe tags, or keyword..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] focus:border-[var(--theme-border-strong)] text-[var(--text-xs)] text-[var(--theme-text-primary)] placeholder:text-[var(--theme-text-muted)] shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20 transition-all"
+            placeholder="Search by venue, artist, vibe, or keyword..."
+            className="flex-1 bg-transparent text-[var(--text-sm)] text-[var(--theme-text-primary)] placeholder-[var(--theme-text-muted)] focus:outline-none min-w-0 font-sans"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              className="text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] px-2 py-0.5 rounded-full hover:bg-[var(--theme-bg-elevated)] transition-colors cursor-pointer shrink-0"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
+        {/* Tuning Trigger Button */}
         <button
           type="button"
           onClick={onOpenTuning}
-          className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)] hover:bg-[var(--theme-bg-elevated)] text-[var(--text-xs)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-text-primary)]/20"
+          className="shrink-0 flex items-center gap-2 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full bg-[var(--theme-bg-surface)] border border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)] hover:bg-[var(--theme-bg-elevated)] text-[var(--text-sm)] font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] shadow-[var(--shadow-ambient)] hover:shadow-[var(--shadow-float)] transition-all cursor-pointer focus-visible:outline-none focus-within:border-[var(--theme-text-primary)]/40 active:scale-95"
         >
           <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" />
           <span>Tuning</span>
