@@ -184,6 +184,35 @@ For each candidate:
     lookup.set(item.candidateId, item);
   }
 
+  // Pre-resolve unique venue locations in a single parallel batch to avoid redundant network calls
+  const venuesToGeocode = new Map<string, { venue: string; address?: string }>();
+  for (const cand of candidates) {
+    const hasCandCoords =
+      cand.coordinates &&
+      typeof cand.coordinates.lat === 'number' &&
+      typeof cand.coordinates.lng === 'number' &&
+      !isNaN(cand.coordinates.lat) &&
+      !isNaN(cand.coordinates.lng) &&
+      (cand.coordinates.lat !== 0 || cand.coordinates.lng !== 0);
+
+    if (!hasCandCoords && cand.venueName) {
+      const vKey = `${cand.venueName.trim()}|${(cand.address || '').trim()}`.toLowerCase();
+      if (!venuesToGeocode.has(vKey)) {
+        venuesToGeocode.set(vKey, { venue: cand.venueName, address: cand.address });
+      }
+    }
+  }
+
+  const venueCoordsMap = new Map<string, Coordinates | null>();
+  if (venuesToGeocode.size > 0) {
+    await Promise.all(
+      Array.from(venuesToGeocode.entries()).map(async ([key, info]) => {
+        const coords = await geocodeVenueOrAddress(info.venue, info.address, locationHint);
+        venueCoordsMap.set(key, coords);
+      })
+    );
+  }
+
   const curatedResults = await Promise.all(
     candidates.map(async (cand): Promise<LocalEvent | null> => {
       const curation = lookup.get(cand.id);
@@ -197,13 +226,10 @@ For each candidate:
         !isNaN(cand.coordinates.lng) &&
         (cand.coordinates.lat !== 0 || cand.coordinates.lng !== 0);
 
-      // Resolve true venue/address coordinates if candidate did not contain them
-      let eventCoords: Coordinates | null = null;
-      if (hasCandCoords) {
-        eventCoords = cand.coordinates!;
-      } else {
-        eventCoords = await geocodeVenueOrAddress(cand.venueName, cand.address, locationHint);
-      }
+      const vKey = `${cand.venueName.trim()}|${(cand.address || '').trim()}`.toLowerCase();
+      const eventCoords: Coordinates | null = hasCandCoords
+        ? cand.coordinates!
+        : venueCoordsMap.get(vKey) || null;
 
       const hasUserCoords =
         userCoordinates &&
@@ -224,7 +250,7 @@ For each candidate:
         );
       }
 
-      // Final coordinates: real coordinates or safe neutral fallback (never contaminate with user coordinates)
+      // Final coordinates: real coordinates or safe neutral fallback
       const finalCoordinates: Coordinates = eventCoords || { lat: 0, lng: 0 };
 
       const rawImages = cand.coverImages && cand.coverImages.length > 0

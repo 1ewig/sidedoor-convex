@@ -43,6 +43,12 @@ export function useAgentMail() {
   // Send an automated inquiry for an event
   const sendEventInquiry = useCallback(
     (event: LocalEvent, customQuestion?: string) => {
+      const recipientEmail = event.organizerEmail?.trim();
+      if (!recipientEmail || !recipientEmail.includes('@')) {
+        console.warn(`[AgentMail] Cannot dispatch inquiry for "${event.title}": venue has no direct email address.`);
+        return;
+      }
+
       const threadId = `th-${event.id}`;
       const questionBody =
         customQuestion ||
@@ -83,7 +89,7 @@ export function useAgentMail() {
           eventId: event.id,
           eventTitle: event.title,
           organizerName: event.organizerName,
-          organizerEmail: event.organizerEmail,
+          organizerEmail: recipientEmail,
           agentEmail: 'scout@agentmail.to',
           subject: `Inquiry: ${event.title}`,
           lastMessageAt: nowIso,
@@ -141,7 +147,7 @@ export function useAgentMail() {
               eventId: event.id,
               eventTitle: event.title,
               organizerName: event.organizerName,
-              organizerEmail: event.organizerEmail,
+              organizerEmail: recipientEmail,
               agentEmail: resolvedAgentEmail,
               subject: `Inquiry: ${event.title}`,
               questionBody,
@@ -153,6 +159,10 @@ export function useAgentMail() {
         })
         .catch((err) => {
           console.error('❌ [AgentMail] Error dispatching inquiry:', err);
+          // Roll back optimistic thread if dispatch failed
+          setLocalThreads((prev) =>
+            prev.filter((t) => !(t.eventId === event.id && t.status === 'pending' && t.messages.length === 1))
+          );
         })
         .finally(() => {
           setIsSending(false);

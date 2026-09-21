@@ -35,6 +35,7 @@ export function EventDetailModal({
   if (!isOpen || !event) return null;
 
   const isSent = event.outreachStatus === 'sent' || event.outreachStatus === 'replied';
+  const hasDirectEmail = Boolean(event.organizerEmail && event.organizerEmail.includes('@'));
   const heroImages =
     event.coverImages && event.coverImages.length > 0
       ? event.coverImages
@@ -206,6 +207,13 @@ export function EventDetailModal({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 Inquired
               </div>
+            ) : !hasDirectEmail ? (
+              <span
+                title="This venue or gathering operates on walk-ups/door admission and does not publish a direct organizer email."
+                className="inline-flex items-center px-3 py-1.5 text-xs font-mono text-[var(--theme-text-muted)] bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] rounded-lg cursor-default select-none"
+              >
+                Door / Walk-up Only
+              </span>
             ) : (
               <button
                 type="button"

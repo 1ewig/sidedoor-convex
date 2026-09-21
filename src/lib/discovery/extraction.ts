@@ -157,9 +157,30 @@ export function parseDateText(text: string, referenceDate: Date = new Date()): {
 }
 
 export function extractPriceInfo(text: string): { price: string; isFree: boolean } {
-  if (/\bfree (?:admission|entry|event|rsvp)\b|\bno cover\b|\bzero cost\b|\bpwyc\b/i.test(text)) {
+  // 1. Advance vs Door pricing: e.g. "$10 adv / $15 door"
+  const advDoorMatch = text.match(/(?:\$|€|£)\s?(\d+)\s*(?:adv(?:ance)?|\/|\s*-\s*)\s*(?:\$|€|£)?\s?(\d+)\s*door/i);
+  if (advDoorMatch) {
+    return { price: `$${advDoorMatch[1]} Adv / $${advDoorMatch[2]} Door`, isFree: false };
+  }
+
+  // 2. Conditional free: e.g. "Free before 10pm"
+  const condMatch = text.match(/\bfree\s+before\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
+  if (condMatch) {
+    return { price: `Free before ${condMatch[1].trim()}`, isFree: true };
+  }
+
+  // 3. Free or no-cover entry
+  if (/\b(?:free\s*(?:admission|entry|event|rsvp)?|no cover|zero cost|pwyc|pay what you can|complimentary)\b/i.test(text)) {
     return { price: 'Free Entry', isFree: true };
   }
+
+  // 4. Sliding scale / Suggested donation
+  if (/\b(?:sliding scale|suggested donation)\b/i.test(text)) {
+    const amtMatch = text.match(/(?:\$|€|£)\s?(\d+)/i);
+    return { price: amtMatch ? `Donation (${amtMatch[0]})` : 'Sliding Scale', isFree: true };
+  }
+
+  // 5. Standard currency extraction
   const prices = [...text.matchAll(/(?:\$|€|£|USD|EUR)\s?(\d{1,4}(?:\.\d{2})?)/gi)].map((m) =>
     m[0].replace(/\s+/g, '')
   );

@@ -70,7 +70,8 @@ Temporal Context:
 Core Rules:
 1. Turn informal or vibe descriptions (e.g. "chill natural wine listening bar", "underground techno basement", "pottery and craft flea") into explicit search queries targeting calendars, schedules, lineups, ticket links, and flyers.
 2. Location Anchoring: If the user specified a location in their prompt (e.g. "in Bushwick" or "in Austin"), use that. Otherwise use the default location hint: "${locationHint}". The searchQuery MUST explicitly contain the city/neighborhood name so results don't drift.
-3. Keep it to a single, high-signal search query. Avoid generic tourist terms. Focus on venue calendars, flyers, and event listings.`,
+3. High-Density Scheduling: Prioritize keywords that trigger raw event lists and venue calendars (e.g., "calendar OR lineup OR schedule OR tickets OR shows").
+4. Negative Filtering: Exclude generic tourist listicles and static travel guides (e.g., avoid "top 10 things to do", "best hotels", "tripadvisor").`,
       prompt: `User Request: "${prompt}"\nDefault Location: "${locationHint}"\nTimeframe: "${whenHint}"`,
     });
 

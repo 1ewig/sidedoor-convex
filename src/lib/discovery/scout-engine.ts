@@ -99,6 +99,10 @@ export interface ScoutCrawlResult {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Short-lived in-memory cache (2-minute TTL) for identical crawl requests
+const CRAWL_CACHE_TTL_MS = 2 * 60 * 1000;
+const crawlCache = new Map<string, { result: ScoutCrawlResult; expiresAt: number }>();
+
 async function searchWithBackoff(
   firecrawl: FirecrawlApp,
   query: string,
@@ -129,17 +133,25 @@ export async function executeScoutCrawl({
   country,
   when,
 }: ScoutCrawlOptions): Promise<ScoutCrawlResult> {
+  const targetCountry = country || process.env.FIRECRAWL_COUNTRY || 'US';
+  const effectiveWhen = when || 'this weekend';
+
+  const cacheKey = `${prompt.toLowerCase().trim()}|${location.toLowerCase().trim()}|${effectiveWhen.toLowerCase().trim()}|${targetCountry.toLowerCase().trim()}`;
+  const cached = crawlCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    console.log(`[ScoutEngine] ⚡ Returning cached crawl result for "${prompt}" (${cached.result.allScrapedPages.length} pages).`);
+    return cached.result;
+  }
+
   const firecrawl = new FirecrawlApp({ apiKey: firecrawlKey });
   const seenUrls = new Set<string>();
   const allScrapedPages: ScrapedPageInput[] = [];
-
-  const targetCountry = country || process.env.FIRECRAWL_COUNTRY || 'US';
 
   // Step 1: Refine intent, location & vibe tags with Gemini (~300ms)
   const { searchQuery, effectiveLocation, vibeTags } = await refineScoutQuery(
     prompt,
     location,
-    when || 'this weekend'
+    effectiveWhen
   );
   const queriesUsed = [searchQuery];
 
@@ -167,9 +179,16 @@ export async function executeScoutCrawl({
 
   console.log(`[ScoutEngine] 📄 Crawl complete: ${allScrapedPages.length} unique pages ingested.`);
 
-  return {
+  const result: ScoutCrawlResult = {
     allScrapedPages,
     queriesUsed,
     vibeTags,
   };
+
+  crawlCache.set(cacheKey, {
+    result,
+    expiresAt: Date.now() + CRAWL_CACHE_TTL_MS,
+  });
+
+  return result;
 }
