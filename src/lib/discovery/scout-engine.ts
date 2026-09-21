@@ -95,6 +95,7 @@ export interface ScoutCrawlResult {
   allScrapedPages: ScrapedPageInput[];
   queriesUsed: string[];
   vibeTags: string[];
+  resolvedLocation?: string;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -183,6 +184,7 @@ export async function executeScoutCrawl({
     allScrapedPages,
     queriesUsed,
     vibeTags,
+    resolvedLocation: effectiveLocation || location,
   };
 
   crawlCache.set(cacheKey, {

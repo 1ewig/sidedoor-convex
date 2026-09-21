@@ -92,7 +92,7 @@ export function EventCard({ event, onSelect }: EventCardProps) {
             <>
               <span>·</span>
               <span className="font-mono text-[11px] shrink-0">
-                {event.distanceKm} km
+                {event.distanceKm.toLocaleString()} km
               </span>
             </>
           )}

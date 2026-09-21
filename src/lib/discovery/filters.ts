@@ -5,8 +5,14 @@ import { LocalEvent, SearchFilterState } from '@/types';
  * Eliminates duplication across feed memoization and telemetry verification.
  */
 export function matchesSearchFilters(event: LocalEvent, filters: SearchFilterState): boolean {
-  // Radius check
-  if (typeof event.distanceKm === 'number' && event.distanceKm > filters.radiusKm) {
+  // Radius check: apply to local/regional events within 300 km.
+  // If an event is in a remote destination explicitly queried by the user (> 300 km),
+  // do not suppress it with a local base radius filter.
+  if (
+    typeof event.distanceKm === 'number' &&
+    event.distanceKm <= 300 &&
+    event.distanceKm > filters.radiusKm
+  ) {
     return false;
   }
 

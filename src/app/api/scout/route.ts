@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Crawl & Ingest Web Pages via Fast Single-Pass Search
     const crawlStart = Date.now();
-    const { allScrapedPages, queriesUsed, vibeTags } = await executeScoutCrawl({
+    const { allScrapedPages, queriesUsed, vibeTags, resolvedLocation } = await executeScoutCrawl({
       prompt,
       location,
       firecrawlKey,
@@ -61,12 +61,15 @@ export async function POST(req: NextRequest) {
     });
     const crawlDurationSec = parseFloat(((Date.now() - crawlStart) / 1000).toFixed(2));
 
+    const eventLocationHint = resolvedLocation || location;
+
     if (allScrapedPages.length === 0) {
       return NextResponse.json({
         success: true,
         events: [],
         queries: queriesUsed,
         vibeTags,
+        resolvedLocation: eventLocationHint,
         message: 'No web pages found matching query.',
         stats: {
           crawlDurationSec,
@@ -80,7 +83,7 @@ export async function POST(req: NextRequest) {
     const discoveryResult = await runHybridEventDiscovery(
       allScrapedPages,
       prompt,
-      location,
+      eventLocationHint,
       userCoords
     );
     const discoveryDurationSec = parseFloat(((Date.now() - discoveryStart) / 1000).toFixed(2));
@@ -102,6 +105,7 @@ export async function POST(req: NextRequest) {
       },
       queries: queriesUsed,
       vibeTags,
+      resolvedLocation: eventLocationHint,
       pagesScrapedCount: allScrapedPages.length,
     });
   } catch (err: any) {

@@ -65,7 +65,7 @@ export function EventDetailModal({
             {typeof event.distanceKm === 'number' && (
               <>
                 <span>·</span>
-                <span>{event.distanceKm} km away</span>
+                <span>{event.distanceKm.toLocaleString()} km away</span>
               </>
             )}
           </div>

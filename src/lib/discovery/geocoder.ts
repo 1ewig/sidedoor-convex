@@ -29,18 +29,28 @@ export async function geocodeVenueOrAddress(
 
   if (cleanVenue && cleanAddr && cleanVenue.toLowerCase() !== cleanAddr.toLowerCase()) {
     candidateQueries.push(`${cleanVenue}, ${cleanAddr}, ${cleanLoc}`);
+    candidateQueries.push(`${cleanVenue}, ${cleanAddr}`);
     candidateQueries.push(`${cleanAddr}, ${cleanLoc}`);
     candidateQueries.push(`${cleanVenue}, ${cleanLoc}`);
+    candidateQueries.push(`${cleanAddr}`);
+    candidateQueries.push(`${cleanVenue}`);
   } else if (cleanAddr) {
     candidateQueries.push(`${cleanAddr}, ${cleanLoc}`);
+    candidateQueries.push(`${cleanAddr}`);
   } else if (cleanVenue) {
     candidateQueries.push(`${cleanVenue}, ${cleanLoc}`);
+    candidateQueries.push(`${cleanVenue}`);
   }
 
-  // Filter out empty or generic queries
+  // Filter out empty, generic, or duplicate queries
+  const seenQueries = new Set<string>();
   const validQueries = candidateQueries
     .map((q) => q.replace(/,\s*,/g, ',').trim())
-    .filter((q) => q.length >= 4);
+    .filter((q) => {
+      if (q.length < 4 || seenQueries.has(q)) return false;
+      seenQueries.add(q);
+      return true;
+    });
 
   for (const q of validQueries) {
     const key = normalizeKey(q);
