@@ -74,6 +74,8 @@ export function PageClient() {
     replyToThread(threadId, text);
   };
 
+  const isFeedVisible = isFeedOpen || events.length > 0 || isScouting;
+
   return (
     <div className="bg-[var(--theme-bg-base)] text-[var(--theme-text-primary)] font-sans antialiased min-h-screen relative flex flex-col justify-between overflow-x-hidden selection:bg-[var(--theme-text-primary)] selection:text-[var(--theme-bg-surface)]">
       {/* Ambient Leaf Shadow Overlay */}
@@ -94,9 +96,17 @@ export function PageClient() {
       />
 
       {/* Main Global Studio Content */}
-      <main className="relative z-10 w-full flex-1">
+      <main
+        className={`relative z-10 w-full flex-1 flex flex-col transition-all duration-500 ${
+          !isFeedVisible ? 'justify-center pb-20' : 'justify-start'
+        }`}
+      >
         {/* Studio Hero */}
-        <section className="relative z-10 w-full max-w-4xl mx-auto text-center pt-8 pb-8 px-4 sm:px-6">
+        <section
+          className={`relative z-10 w-full max-w-4xl mx-auto text-center px-4 sm:px-6 transition-all duration-500 ${
+            !isFeedVisible ? 'py-12' : 'pt-8 pb-8'
+          }`}
+        >
           {/* Editorial Headline */}
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl text-[var(--theme-text-primary)] tracking-tight leading-[var(--leading-tight)] mb-4">
             Local gatherings <br />
@@ -123,7 +133,7 @@ export function PageClient() {
         <div id="resultsFeed">
           <DiscoveredFeed
             events={events}
-            isOpen={isFeedOpen || events.length > 0}
+            isOpen={isFeedVisible}
             isScouting={isScouting}
             hybridStats={hybridStats}
             onSelectEvent={(event) => setSelectedEvent(event)}
