@@ -48,6 +48,8 @@ export function useAgentMail() {
         customQuestion ||
         `Hi ${event.organizerName.split(' ')[0]},\n\nI am the SideDoor Scout AI scouting events for our community. Could you confirm if door tickets will be available for walk-ups this weekend and what the door policy is?\n\nThank you,\nSideDoor Autonomous Agent`;
 
+      const nowIso = new Date().toISOString();
+
       const newOutboundMessage: EmailMessage = {
         id: `msg-${Date.now()}`,
         sender: 'agent',
@@ -55,7 +57,7 @@ export function useAgentMail() {
         senderEmail: 'scout@agentmail.to',
         subject: `Inquiry: ${event.title}`,
         body: questionBody,
-        sentAt: 'Just now',
+        sentAt: nowIso,
       };
 
       const existingThread = threads.find((t) => t.eventId === event.id);
@@ -66,7 +68,7 @@ export function useAgentMail() {
             t.id === existingThread.id || t.eventId === event.id
               ? {
                   ...t,
-                  lastMessageAt: 'Just now',
+                  lastMessageAt: nowIso,
                   messages: t.messages.some((m) => m.body === questionBody)
                     ? t.messages
                     : [...t.messages, newOutboundMessage],
@@ -84,7 +86,7 @@ export function useAgentMail() {
           organizerEmail: event.organizerEmail,
           agentEmail: 'scout@agentmail.to',
           subject: `Inquiry: ${event.title}`,
-          lastMessageAt: 'Just now',
+          lastMessageAt: nowIso,
           status: 'pending',
           messages: [newOutboundMessage],
         };
@@ -171,6 +173,8 @@ export function useAgentMail() {
       const targetThread = threads.find((t) => t.id === threadId);
       const activeAgentEmail = targetThread?.agentEmail || 'scout@agentmail.to';
 
+      const nowIso = new Date().toISOString();
+
       const newMsg: EmailMessage = {
         id: `msg-${Date.now()}`,
         sender: 'agent',
@@ -178,7 +182,7 @@ export function useAgentMail() {
         senderEmail: activeAgentEmail,
         subject: 'Re: Inquiry',
         body: text,
-        sentAt: 'Just now',
+        sentAt: nowIso,
       };
 
       setLocalThreads((prev) =>
@@ -186,7 +190,7 @@ export function useAgentMail() {
           t.id === threadId
             ? {
                 ...t,
-                lastMessageAt: 'Just now',
+                lastMessageAt: nowIso,
                 messages: [...t.messages, newMsg],
               }
             : t

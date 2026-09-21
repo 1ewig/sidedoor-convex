@@ -11,6 +11,7 @@ import {
 import { EmailThread } from '@/types';
 import { drawerBackdropVariants, drawerRightVariants } from '@/lib/animations';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
+import { formatRelativeTime, formatMessageTime } from '@/lib/temporal';
 
 interface OutboxDrawerProps {
   isOpen: boolean;
@@ -171,7 +172,7 @@ export function OutboxDrawer({
                             {thread.organizerName}
                           </span>
                           <span className="text-[11px] text-[var(--theme-text-muted)] shrink-0 font-mono">
-                            {thread.lastMessageAt || 'Now'}
+                            {formatRelativeTime(thread.lastMessageAt)}
                           </span>
                         </div>
 
@@ -233,7 +234,7 @@ export function OutboxDrawer({
                           {isAgent && <Bot className="w-3 h-3" />}
                           <span>{message.senderName || (isAgent ? 'Agent' : 'Organizer')}</span>
                           <span>·</span>
-                          <span>{message.sentAt || 'Just now'}</span>
+                          <span>{formatMessageTime(message.sentAt)}</span>
                         </div>
 
                         <div

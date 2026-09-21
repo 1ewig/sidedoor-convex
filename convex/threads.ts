@@ -72,7 +72,7 @@ export const createInquiry = mutation({
       .first();
 
     const now = Date.now();
-    const sentAtStr = 'Just now';
+    const sentAtStr = new Date(now).toISOString();
 
     if (!thread) {
       const threadId = await ctx.db.insert('threads', {
@@ -133,7 +133,7 @@ export const addMessage = mutation({
     }
 
     const now = Date.now();
-    const sentAtStr = 'Just now';
+    const sentAtStr = new Date(now).toISOString();
 
     const messageId = await ctx.db.insert('messages', {
       threadId: args.threadId,
@@ -188,7 +188,7 @@ export const addMessageFromAgentMail = mutation({
     }
 
     const now = Date.now();
-    const sentAtStr = 'Just now';
+    const sentAtStr = new Date(now).toISOString();
 
     const messageId = await ctx.db.insert('messages', {
       threadId: thread._id,

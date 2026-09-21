@@ -207,7 +207,7 @@ SideDoor bridges digital discovery with real-world correspondence via [AgentMail
 
 1. **Automated Inquiry Dispatch (`/api/agent-mail/send`)**:
    - Sends polite, autonomous door-ticket and venue-policy inquiries directly to organizers via `agentmail` SDK.
-   - Inquires under the identity `scout-alpha@agentmail.to` (or auto-provisioned agent inboxes).
+   - Inquires under the configured agent inbox or auto-provisioned inbox identity.
 2. **Inbound Webhook Synchronization (`/api/agent-mail/webhook`)**:
    - Receives inbound replies from organizers and syncs them directly to Convex `messages` and `threads` tables.
    - Flips thread status to `responded`, alerting the user with unread notification badges in the navigation header.

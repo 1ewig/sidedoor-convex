@@ -51,3 +51,104 @@ export function getTemporalContext(): TemporalContext {
 
   return { currentDateStr, weekendStr, monthYearStr, targetWeekendRange: { start, end } };
 }
+
+/**
+ * Formats a timestamp, ISO string, or date into a clean relative time label (e.g., "Just now", "5m ago", "2h ago", "Yesterday", "Oct 24").
+ */
+export function formatRelativeTime(dateInput?: string | number | null): string {
+  if (!dateInput) return 'Just now';
+
+  // If input is legacy hardcoded "Just now" or cannot be parsed, handle gracefully
+  if (dateInput === 'Just now' || dateInput === 'Now') return 'Just now';
+
+  const date = typeof dateInput === 'number' ? new Date(dateInput) : new Date(dateInput);
+  if (isNaN(date.getTime())) {
+    return String(dateInput);
+  }
+
+  const now = Date.now();
+  const diffMs = Math.max(0, now - date.getTime());
+
+  if (diffMs < 60_000) {
+    return 'Just now';
+  }
+
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMin < 60) {
+    return `${diffMin}m ago`;
+  }
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+  if (diffDays === 1) {
+    return 'Yesterday';
+  }
+  if (diffDays < 7) {
+    return `${diffDays}d ago`;
+  }
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}),
+  });
+}
+
+/**
+ * Formats a timestamp or ISO string for conversation bubbles (e.g., "Just now", "4:15 PM", "Yesterday, 4:15 PM", "Oct 24, 4:15 PM").
+ */
+export function formatMessageTime(dateInput?: string | number | null): string {
+  if (!dateInput) return 'Just now';
+
+  if (dateInput === 'Just now') return 'Just now';
+
+  const date = typeof dateInput === 'number' ? new Date(dateInput) : new Date(dateInput);
+  if (isNaN(date.getTime())) {
+    return String(dateInput);
+  }
+
+  const now = Date.now();
+  const diffMs = Math.max(0, now - date.getTime());
+
+  if (diffMs < 60_000) {
+    return 'Just now';
+  }
+
+  const timeStr = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  const nowDate = new Date();
+  const isSameDay =
+    date.getDate() === nowDate.getDate() &&
+    date.getMonth() === nowDate.getMonth() &&
+    date.getFullYear() === nowDate.getFullYear();
+
+  if (isSameDay) {
+    return timeStr;
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(nowDate.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) {
+    return `Yesterday, ${timeStr}`;
+  }
+
+  const dateStr = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(date.getFullYear() !== nowDate.getFullYear() ? { year: 'numeric' } : {}),
+  });
+
+  return `${dateStr}, ${timeStr}`;
+}

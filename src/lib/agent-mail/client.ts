@@ -2,6 +2,7 @@ import { AgentMailClient } from 'agentmail';
 
 let cachedClient: AgentMailClient | null = null;
 let cachedInboxId: string | null = null;
+let cachedInboxEmail: string | null = null;
 
 export function isAgentMailConfigured(): boolean {
   const apiKey = process.env.AGENTMAIL_API_KEY;
@@ -24,49 +25,58 @@ export async function resolveAgentMailInbox(client: AgentMailClient): Promise<{
   inboxId: string;
   inboxEmail: string;
 }> {
-  if (cachedInboxId) {
+  if (cachedInboxId && cachedInboxEmail) {
     return {
       inboxId: cachedInboxId,
-      inboxEmail: process.env.AGENTMAIL_INBOX_EMAIL || 'scout-alpha@agentmail.to',
+      inboxEmail: cachedInboxEmail,
     };
   }
 
   const envInboxId = process.env.AGENTMAIL_INBOX_ID?.trim();
+  const envInboxEmail = process.env.AGENTMAIL_INBOX_EMAIL?.trim();
+
   if (envInboxId && !envInboxId.includes('your_inbox_id_here')) {
     cachedInboxId = envInboxId;
-    return {
-      inboxId: envInboxId,
-      inboxEmail: process.env.AGENTMAIL_INBOX_EMAIL || 'scout-alpha@agentmail.to',
-    };
+    if (envInboxEmail && !envInboxEmail.includes('your_inbox_email_here')) {
+      cachedInboxEmail = envInboxEmail;
+      return { inboxId: envInboxId, inboxEmail: envInboxEmail };
+    }
+
+    try {
+      const inbox = await client.inboxes.get(envInboxId);
+      cachedInboxEmail = inbox.email || `${envInboxId}@agentmail.to`;
+      return { inboxId: envInboxId, inboxEmail: cachedInboxEmail };
+    } catch {
+      cachedInboxEmail = `${envInboxId}@agentmail.to`;
+      return { inboxId: envInboxId, inboxEmail: cachedInboxEmail };
+    }
   }
 
-  // Auto-discover or create on demand
+  // Auto-discover existing inbox or create on demand
   try {
     const listRes = await client.inboxes.list({ limit: 1 });
     if (listRes.inboxes && listRes.inboxes.length > 0) {
       const inbox = listRes.inboxes[0];
       cachedInboxId = inbox.inboxId;
+      cachedInboxEmail = inbox.email || envInboxEmail || `${inbox.inboxId}@agentmail.to`;
       return {
-        inboxId: inbox.inboxId,
-        inboxEmail: inbox.email || process.env.AGENTMAIL_INBOX_EMAIL || 'scout-alpha@agentmail.to',
+        inboxId: cachedInboxId,
+        inboxEmail: cachedInboxEmail,
       };
     }
 
-    // Create a new scout inbox
+    // Create a new scout inbox on demand
     const newInbox = await client.inboxes.create({
       username: `scout-${Date.now().toString(36)}`,
     });
     cachedInboxId = newInbox.inboxId;
+    cachedInboxEmail = newInbox.email || `${newInbox.inboxId}@agentmail.to`;
     return {
-      inboxId: newInbox.inboxId,
-      inboxEmail: newInbox.email || process.env.AGENTMAIL_INBOX_EMAIL || 'scout-alpha@agentmail.to',
+      inboxId: cachedInboxId,
+      inboxEmail: cachedInboxEmail,
     };
   } catch (error) {
-    console.warn('⚠️ [AgentMail] Failed to list or create inbox:', error);
-    const fallbackId = envInboxId || 'inbox_default';
-    return {
-      inboxId: fallbackId,
-      inboxEmail: process.env.AGENTMAIL_INBOX_EMAIL || 'scout-alpha@agentmail.to',
-    };
+    console.error('❌ [AgentMail] Failed to list or create inbox:', error);
+    throw error;
   }
 }
