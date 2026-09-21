@@ -46,13 +46,13 @@ export function useAgentMail() {
       const threadId = `th-${event.id}`;
       const questionBody =
         customQuestion ||
-        `Hi ${event.organizerName.split(' ')[0]},\n\nI am the SideDoor Scout AI scouting events for our community. Could you confirm if door tickets will be available for walk-ups this weekend and what the door policy is?\n\nThank you,\nSideDoor Autonomous Agent (scout-alpha@sidedoor.agentmail.to)`;
+        `Hi ${event.organizerName.split(' ')[0]},\n\nI am the SideDoor Scout AI scouting events for our community. Could you confirm if door tickets will be available for walk-ups this weekend and what the door policy is?\n\nThank you,\nSideDoor Autonomous Agent`;
 
       const newOutboundMessage: EmailMessage = {
         id: `msg-${Date.now()}`,
         sender: 'agent',
         senderName: 'SideDoor Scout AI',
-        senderEmail: 'scout-alpha@sidedoor.agentmail.to',
+        senderEmail: 'scout@agentmail.to',
         subject: `Inquiry: ${event.title}`,
         body: questionBody,
         sentAt: 'Just now',
@@ -82,7 +82,7 @@ export function useAgentMail() {
           eventTitle: event.title,
           organizerName: event.organizerName,
           organizerEmail: event.organizerEmail,
-          agentEmail: 'scout-alpha@sidedoor.agentmail.to',
+          agentEmail: 'scout@agentmail.to',
           subject: `Inquiry: ${event.title}`,
           lastMessageAt: 'Just now',
           status: 'pending',
@@ -112,6 +112,24 @@ export function useAgentMail() {
         .then((data) => {
           const isLive = Boolean(data && data.isLive);
           const agentmailThreadId = data?.agentmailThreadId;
+          const resolvedAgentEmail = data?.agentEmail || 'scout@agentmail.to';
+
+          // Update local thread with actual resolved agent email
+          if (data?.agentEmail) {
+            setLocalThreads((prev) =>
+              prev.map((t) =>
+                t.eventId === event.id
+                  ? {
+                      ...t,
+                      agentEmail: resolvedAgentEmail,
+                      messages: t.messages.map((m) =>
+                        m.sender === 'agent' ? { ...m, senderEmail: resolvedAgentEmail } : m
+                      ),
+                    }
+                  : t
+              )
+            );
+          }
 
           // Sync to Convex if configured
           if (isConfigured) {
@@ -121,7 +139,7 @@ export function useAgentMail() {
               eventTitle: event.title,
               organizerName: event.organizerName,
               organizerEmail: event.organizerEmail,
-              agentEmail: data?.agentEmail || 'scout-alpha@sidedoor.agentmail.to',
+              agentEmail: resolvedAgentEmail,
               subject: `Inquiry: ${event.title}`,
               questionBody,
               agentmailThreadId,
@@ -177,11 +195,14 @@ export function useAgentMail() {
 
   const replyToThread = useCallback(
     (threadId: string, text: string) => {
+      const targetThread = threads.find((t) => t.id === threadId);
+      const activeAgentEmail = targetThread?.agentEmail || 'scout@agentmail.to';
+
       const newMsg: EmailMessage = {
         id: `msg-${Date.now()}`,
         sender: 'agent',
         senderName: 'You (via SideDoor)',
-        senderEmail: 'scout-alpha@sidedoor.agentmail.to',
+        senderEmail: activeAgentEmail,
         subject: 'Re: Inquiry',
         body: text,
         sentAt: 'Just now',
@@ -199,7 +220,6 @@ export function useAgentMail() {
         )
       );
 
-      const targetThread = threads.find((t) => t.id === threadId);
       if (targetThread) {
         // Send via /api/agent-mail/send
         fetch('/api/agent-mail/send', {
@@ -226,7 +246,7 @@ export function useAgentMail() {
           threadId: threadId as Id<'threads'>,
           sender: 'agent',
           senderName: 'You (via SideDoor)',
-          senderEmail: 'scout-alpha@sidedoor.agentmail.to',
+          senderEmail: activeAgentEmail,
           subject: 'Re: Inquiry',
           body: text,
           status: 'pending',
