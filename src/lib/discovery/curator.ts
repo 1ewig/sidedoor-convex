@@ -175,7 +175,7 @@ For each candidate:
 2. Write a captivating, editorial 1-line tagline.
 3. Write a vivid 2-sentence atmosphere overview.
 4. Assign 3-4 aesthetic hashtags.
-5. If the original candidate includes a verified email, preserve it. Otherwise leave suggestedOrganizerEmail empty.`,
+5. Suggest a booking/contact inquiry email for the venue (e.g. info@venuedomain.com, booking@venuedomain.com, or tickets@venuedomain.com) using the venue name, text, or source domain.`,
     prompt: `Candidate Events for Curation:\n${JSON.stringify(compactCandidates, null, 2)}`,
   });
 
@@ -281,7 +281,21 @@ For each candidate:
         matchScore: curation?.matchScore || 85,
         vibeTags: curation?.vibeTags || ['#Local', '#Culture', '#DIY'],
         organizerName: cand.organizerName || cand.venueName,
-        organizerEmail: cand.organizerEmail || curation?.suggestedOrganizerEmail || '',
+        organizerEmail: (() => {
+          let email = (cand.organizerEmail || curation?.suggestedOrganizerEmail || '').trim();
+          if (!email || !email.includes('@')) {
+            try {
+              const urlObj = new URL(cand.sourceUrl);
+              const domain = urlObj.hostname.replace(/^www\./, '');
+              if (domain) email = `info@${domain}`;
+            } catch {}
+          }
+          if (!email || !email.includes('@')) {
+            const cleanVenue = cand.venueName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            email = `contact@${cleanVenue || 'venue'}.com`;
+          }
+          return email;
+        })(),
         sourceUrl: cand.sourceUrl,
         firecrawlExtractedAt: `Hybrid (${cand.sourceLane})`,
         coverImage: coverImages[0],

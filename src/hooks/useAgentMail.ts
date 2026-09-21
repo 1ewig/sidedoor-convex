@@ -43,10 +43,17 @@ export function useAgentMail() {
   // Send an automated inquiry for an event
   const sendEventInquiry = useCallback(
     (event: LocalEvent, customQuestion?: string) => {
-      const recipientEmail = event.organizerEmail?.trim();
+      let recipientEmail = event.organizerEmail?.trim();
       if (!recipientEmail || !recipientEmail.includes('@')) {
-        console.warn(`[AgentMail] Cannot dispatch inquiry for "${event.title}": venue has no direct email address.`);
-        return;
+        try {
+          const urlObj = new URL(event.sourceUrl);
+          const domain = urlObj.hostname.replace(/^www\./, '');
+          if (domain) recipientEmail = `info@${domain}`;
+        } catch {}
+      }
+      if (!recipientEmail || !recipientEmail.includes('@')) {
+        const cleanVenue = event.venueName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        recipientEmail = `contact@${cleanVenue || 'venue'}.com`;
       }
 
       const threadId = `th-${event.id}`;

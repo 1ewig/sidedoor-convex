@@ -39,13 +39,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if event has a valid organizer email
-    const recipientEmail = event.organizerEmail?.trim();
+    // Resolve organizer email: use event.organizerEmail or derive from venue / source domain
+    let recipientEmail = event.organizerEmail?.trim();
     if (!recipientEmail || !recipientEmail.includes('@')) {
-      return NextResponse.json(
-        { error: 'Venue organizer has no direct email address listed for this event.' },
-        { status: 400 }
-      );
+      try {
+        const urlObj = new URL(event.sourceUrl);
+        const domain = urlObj.hostname.replace(/^www\./, '');
+        if (domain) recipientEmail = `info@${domain}`;
+      } catch {}
+    }
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      const cleanVenue = event.venueName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      recipientEmail = `contact@${cleanVenue || 'venue'}.com`;
     }
 
     const { inboxId, inboxEmail } = await resolveAgentMailInbox(client);
