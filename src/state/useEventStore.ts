@@ -18,6 +18,7 @@ interface EventStoreState {
   appendLog: (log: ScoutLog) => void;
   setSelectedEventId: (id: string | null) => void;
   setIsFeedOpen: (isOpen: boolean) => void;
+  removeBatch: (batchId: string) => void;
   clearEvents: () => void;
 }
 
@@ -72,6 +73,18 @@ export const useEventStore = create<EventStoreState>()(
       setSelectedEventId: (selectedEventId) => set({ selectedEventId }),
 
       setIsFeedOpen: (isFeedOpen) => set({ isFeedOpen }),
+
+      removeBatch: (batchId: string) => {
+        set((state) => {
+          const remaining = state.scoutedEvents.filter(
+            (e) => (e.batchId || e.searchPrompt || 'default') !== batchId
+          );
+          return {
+            scoutedEvents: remaining,
+            isFeedOpen: remaining.length > 0,
+          };
+        });
+      },
 
       clearEvents: () =>
         set({

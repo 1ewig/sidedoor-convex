@@ -31,6 +31,10 @@ export interface LocalEvent {
   /** Ranked flyer image candidates walked by the UI on load failure. */
   coverImages?: string[];
   outreachStatus?: 'none' | 'sent' | 'replied';
+  batchId?: string;
+  searchPrompt?: string;
+  searchLocation?: string;
+  scoutedAt?: number;
 }
 
 export interface ScoutLog {

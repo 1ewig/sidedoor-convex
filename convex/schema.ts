@@ -33,6 +33,10 @@ export default defineSchema({
       v.union(v.literal('none'), v.literal('sent'), v.literal('replied'))
     ),
     sessionId: v.optional(v.string()),
+    batchId: v.optional(v.string()),
+    searchPrompt: v.optional(v.string()),
+    searchLocation: v.optional(v.string()),
+    scoutedAt: v.optional(v.number()),
   })
     .index('by_category', ['category'])
     .index('by_matchScore', ['matchScore'])

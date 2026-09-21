@@ -33,6 +33,7 @@ export function PageClient() {
     updateFilters,
     markEventOutreach,
     triggerScout,
+    dismissBatch,
   } = useEventDiscovery();
 
   const {
@@ -137,6 +138,7 @@ export function PageClient() {
             isScouting={isScouting}
             hybridStats={hybridStats}
             onSelectEvent={(event) => setSelectedEvent(event)}
+            onDismissBatch={dismissBatch}
           />
         </div>
       </main>

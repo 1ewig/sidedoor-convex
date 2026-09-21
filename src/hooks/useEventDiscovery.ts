@@ -26,6 +26,7 @@ export function useEventDiscovery() {
   const setSelectedEventId = useEventStore((state) => state.setSelectedEventId);
   const isFeedOpen = useEventStore((state) => state.isFeedOpen);
   const setIsFeedOpen = useEventStore((state) => state.setIsFeedOpen);
+  const removeBatch = useEventStore((state) => state.removeBatch);
 
   const filters = useScoutFilterStore((state) => state.filters);
   const updateFilters = useScoutFilterStore((state) => state.updateFilters);
@@ -226,14 +227,26 @@ export function useEventDiscovery() {
           };
           appendLog(successLog);
 
+          const batchId = `batch-${Date.now()}`;
+          const scoutedAt = Date.now();
+          const targetLocation = data.resolvedLocation || effectiveLocation;
+
+          const taggedEvents: LocalEvent[] = data.events.map((e: LocalEvent) => ({
+            ...e,
+            batchId: e.batchId || batchId,
+            searchPrompt: e.searchPrompt || promptText,
+            searchLocation: e.searchLocation || targetLocation,
+            scoutedAt: e.scoutedAt || scoutedAt,
+          }));
+
           // Prepend newly discovered events to the persistent store
-          appendScoutedEvents(data.events);
+          appendScoutedEvents(taggedEvents);
           setIsFeedOpen(true);
 
           // Persist discovered events and scout log to Convex if configured
           if (isConfigured) {
             saveBatchMutation({
-              events: data.events.map((e: LocalEvent) => ({
+              events: taggedEvents.map((e: LocalEvent) => ({
                 id: e.id,
                 title: e.title,
                 category: e.category,
@@ -258,6 +271,10 @@ export function useEventDiscovery() {
                 coverImage: e.coverImage,
                 coverImages: e.coverImages,
                 outreachStatus: e.outreachStatus || 'none',
+                batchId: e.batchId,
+                searchPrompt: e.searchPrompt,
+                searchLocation: e.searchLocation,
+                scoutedAt: e.scoutedAt,
                 sessionId,
               })),
             }).catch((err: unknown) => {
@@ -344,6 +361,13 @@ export function useEventDiscovery() {
     [isConfigured, updateEventOutreachStatusInStore, updateOutreachMutation]
   );
 
+  const dismissBatch = useCallback(
+    (batchId: string) => {
+      removeBatch(batchId);
+    },
+    [removeBatch]
+  );
+
   return {
     events: filteredEvents,
     allEventsCount: events.length,
@@ -361,5 +385,6 @@ export function useEventDiscovery() {
     setIsFeedOpen,
     triggerScout,
     markEventOutreach,
+    dismissBatch,
   };
 }

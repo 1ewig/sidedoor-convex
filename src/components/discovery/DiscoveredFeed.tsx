@@ -1,4 +1,5 @@
-import { Loader2, Zap } from 'lucide-react';
+import { useMemo } from 'react';
+import { Loader2, Zap, X } from 'lucide-react';
 import { LocalEvent, HybridDiscoveryStats } from '@/types';
 import { EventCard } from './EventCard';
 
@@ -8,6 +9,15 @@ interface DiscoveredFeedProps {
   isScouting?: boolean;
   hybridStats?: HybridDiscoveryStats | null;
   onSelectEvent: (event: LocalEvent) => void;
+  onDismissBatch?: (batchId: string) => void;
+}
+
+interface EventBatch {
+  id: string;
+  prompt?: string;
+  location?: string;
+  scoutedAt?: number;
+  events: LocalEvent[];
 }
 
 export function DiscoveredFeed({
@@ -16,7 +26,30 @@ export function DiscoveredFeed({
   isScouting = false,
   hybridStats,
   onSelectEvent,
+  onDismissBatch,
 }: DiscoveredFeedProps) {
+  const batches = useMemo(() => {
+    const result: EventBatch[] = [];
+    let currentBatch: EventBatch | null = null;
+
+    for (const event of events) {
+      const batchKey = event.batchId || event.searchPrompt || 'default';
+      if (!currentBatch || currentBatch.id !== batchKey) {
+        currentBatch = {
+          id: batchKey,
+          prompt: event.searchPrompt,
+          location: event.searchLocation,
+          scoutedAt: event.scoutedAt,
+          events: [],
+        };
+        result.push(currentBatch);
+      }
+      currentBatch.events.push(event);
+    }
+
+    return result;
+  }, [events]);
+
   if (!isOpen) return null;
 
   return (
@@ -140,15 +173,69 @@ export function DiscoveredFeed({
           </div>
         )}
 
-        {/* Existing Discovered Events in 2-column grid matching Radar */}
+        {/* Discovered Events grouped by query batch with dividers */}
         {events.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-            {events.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onSelect={onSelectEvent}
-              />
+          <div className="space-y-8">
+            {batches.map((batch, batchIndex) => (
+              <div key={batch.id} className="space-y-4">
+                {/* Query Section Divider */}
+                {(batches.length > 1 || batch.prompt) && (
+                  <div
+                    className={`flex items-center justify-between gap-3 ${
+                      batchIndex > 0
+                        ? 'pt-8 border-t border-[var(--theme-border-subtle)]'
+                        : 'pt-1'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      {batch.prompt ? (
+                        <span className="font-serif italic text-[var(--text-sm)] sm:text-[var(--text-base)] text-[var(--theme-text-primary)] font-medium truncate">
+                          &ldquo;{batch.prompt}&rdquo;
+                        </span>
+                      ) : (
+                        <span className="font-serif text-[var(--text-sm)] sm:text-[var(--text-base)] text-[var(--theme-text-primary)] font-medium">
+                          Gatherings
+                        </span>
+                      )}
+                      {batch.location && (
+                        <>
+                          <span className="text-[var(--theme-border-strong)] font-mono text-[var(--text-2xs)]">·</span>
+                          <span className="font-mono text-[var(--text-2xs)] text-[var(--theme-text-secondary)]">
+                            {batch.location}
+                          </span>
+                        </>
+                      )}
+                      <span className="text-[var(--theme-border-strong)] font-mono text-[var(--text-2xs)]">·</span>
+                      <span className="font-mono text-[var(--text-2xs)] text-[var(--theme-text-muted)]">
+                        {batch.events.length} {batch.events.length === 1 ? 'gathering' : 'gatherings'}
+                      </span>
+                    </div>
+
+                    {onDismissBatch && batch.id !== 'default' && (
+                      <button
+                        type="button"
+                        onClick={() => onDismissBatch(batch.id)}
+                        aria-label={`Dismiss batch: ${batch.prompt || 'gatherings'}`}
+                        className="shrink-0 text-[var(--theme-text-muted)] hover:text-[var(--theme-text-primary)] p-1 rounded-md transition-colors text-[var(--text-2xs)] font-mono flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Dismiss</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* 2-column event grid for this batch */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                  {batch.events.map((event) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      onSelect={onSelectEvent}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
