@@ -31,14 +31,10 @@ export function Header({
   return (
     <header className="relative z-30 w-full px-6 sm:px-8 py-5 sm:py-7 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-4">
-        <Link href="/main" className="flex items-center gap-2 group cursor-pointer focus-visible:outline-none">
+        <Link href="/main" className="flex items-center group cursor-pointer focus-visible:outline-none">
           <span className="font-serif text-2xl tracking-tight text-[var(--theme-text-primary)]">
             SideDoor
           </span>
-          <span
-            className="w-1.5 h-1.5 rounded-full bg-[var(--theme-text-primary)] animate-pulse"
-            title="Scout active"
-          />
         </Link>
 
         {/* Studio / Public Radar Navigation Switcher */}
@@ -58,14 +54,13 @@ export function Header({
           </Link>
           <Link
             href="/radar"
-            className={`px-3 py-1 rounded-full flex items-center gap-1.5 transition-all duration-150 ${
+            className={`px-3 py-1 rounded-full transition-all duration-150 ${
               currentTab === 'radar'
                 ? 'bg-[var(--theme-text-primary)] text-[var(--theme-bg-surface)] font-medium shadow-xs'
                 : 'text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)]'
             }`}
           >
-            <span>Radar</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-status-success)] animate-pulse" />
+            Radar
           </Link>
         </nav>
       </div>

@@ -15,7 +15,7 @@ This guide is designed for AI coding agents and human developers to understand t
 - **Styling**: Tailwind CSS v4 (Rust LightningCSS engine).
 - **Linter**: Oxlint (Rust Oxc linter — zero-warning requirement).
 - **AI & Web Crawling**: Google Gemini (`@ai-sdk/google` + `ai` SDK) & Firecrawl (`@mendable/firecrawl-js`).
-- **Autonomous Outreach**: AgentMail (`agentmail` SDK) with inbound webhook sync (`/api/agent-mail/webhook`) and simulated offline fallback.
+- **Autonomous Outreach**: AgentMail (`agentmail` SDK) with direct outbound dispatch (`/api/agent-mail/send`) and inbound webhook sync (`/api/agent-mail/webhook`).
 - **Reactive Database**: Convex (`convex/react` + `convex/server`) for real-time global wire sync, event persistence, email thread timelines, and scout run telemetry.
 - **Client State**: Zustand (`zustand` with `persist` middleware) for optimistic client state and local filter preferences.
 - **Interactive Maps**: MapLibre GL (`maplibre-gl`) with cartographic dark/light theme styling and GeoJSON radius projection.
@@ -208,7 +208,6 @@ SideDoor bridges digital discovery with real-world correspondence via [AgentMail
 1. **Automated Inquiry Dispatch (`/api/agent-mail/send`)**:
    - Sends polite, autonomous door-ticket and venue-policy inquiries directly to organizers via `agentmail` SDK.
    - Inquires under the identity `scout-alpha@agentmail.to` (or auto-provisioned agent inboxes).
-   - When running locally without API keys, automatically operates in **simulated mode** with optimistic responses.
 2. **Inbound Webhook Synchronization (`/api/agent-mail/webhook`)**:
    - Receives inbound replies from organizers and syncs them directly to Convex `messages` and `threads` tables.
    - Flips thread status to `responded`, alerting the user with unread notification badges in the navigation header.

@@ -106,30 +106,31 @@ export function useAgentMail() {
         body: JSON.stringify({ event, questionBody }),
       })
         .then(async (res) => {
-          if (!res.ok) return null;
+          if (!res.ok) {
+            const errData = await res.json().catch(() => null);
+            throw new Error(errData?.error || `AgentMail send failed (${res.status})`);
+          }
           return res.json();
         })
         .then((data) => {
-          const isLive = Boolean(data && data.isLive);
           const agentmailThreadId = data?.agentmailThreadId;
           const resolvedAgentEmail = data?.agentEmail || 'scout@agentmail.to';
 
-          // Update local thread with actual resolved agent email
-          if (data?.agentEmail) {
-            setLocalThreads((prev) =>
-              prev.map((t) =>
-                t.eventId === event.id
-                  ? {
-                      ...t,
-                      agentEmail: resolvedAgentEmail,
-                      messages: t.messages.map((m) =>
-                        m.sender === 'agent' ? { ...m, senderEmail: resolvedAgentEmail } : m
-                      ),
-                    }
-                  : t
-              )
-            );
-          }
+          // Update local thread with actual resolved agent email and thread ID
+          setLocalThreads((prev) =>
+            prev.map((t) =>
+              t.eventId === event.id
+                ? {
+                    ...t,
+                    id: agentmailThreadId ? `th-${agentmailThreadId}` : t.id,
+                    agentEmail: resolvedAgentEmail,
+                    messages: t.messages.map((m) =>
+                      m.sender === 'agent' ? { ...m, senderEmail: resolvedAgentEmail } : m
+                    ),
+                  }
+                : t
+            )
+          );
 
           // Sync to Convex if configured
           if (isConfigured) {
@@ -147,37 +148,9 @@ export function useAgentMail() {
               console.warn('⚠️ [Convex] Failed to persist inquiry:', err);
             });
           }
-
-          // If NOT live (no API key or simulated mode), simulate organizer reply after 3.5s
-          if (!isLive) {
-            setTimeout(() => {
-              const autoReply: EmailMessage = {
-                id: `reply-${Date.now()}`,
-                sender: 'organizer',
-                senderName: event.organizerName,
-                senderEmail: event.organizerEmail,
-                subject: `Re: Inquiry: ${event.title}`,
-                body: `Thanks for checking in! Yes, we have about 30 tickets set aside at the door for $15 cash/card. Venue doors open at ${event.formattedTime.split(' - ')[0] || '7:30 PM'}. Looking forward to seeing you there!`,
-                sentAt: 'Just now',
-              };
-
-              setLocalThreads((prev) =>
-                prev.map((t) =>
-                  t.eventId === event.id
-                    ? {
-                        ...t,
-                        status: 'responded',
-                        lastMessageAt: 'Just now',
-                        messages: [...t.messages, autoReply],
-                      }
-                    : t
-                )
-              );
-            }, 3500);
-          }
         })
         .catch((err) => {
-          console.warn('⚠️ [AgentMail] Error contacting /api/agent-mail/send:', err);
+          console.error('❌ [AgentMail] Error dispatching inquiry:', err);
         })
         .finally(() => {
           setIsSending(false);

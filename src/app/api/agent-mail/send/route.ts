@@ -25,32 +25,27 @@ export async function POST(req: Request) {
     }
 
     if (!isAgentMailConfigured()) {
-      return NextResponse.json({
-        success: true,
-        isLive: false,
-        reason: 'agentmail_not_configured',
-        message: 'Running in local simulated mode. Set AGENTMAIL_API_KEY in .env.local to send live emails.',
-      });
+      return NextResponse.json(
+        { error: 'AgentMail is not configured. Please set AGENTMAIL_API_KEY in environment variables.' },
+        { status: 503 }
+      );
     }
 
     const client = getAgentMailClient();
     if (!client) {
-      return NextResponse.json({
-        success: true,
-        isLive: false,
-        reason: 'client_initialization_failed',
-      });
+      return NextResponse.json(
+        { error: 'Failed to initialize AgentMail client.' },
+        { status: 500 }
+      );
     }
 
     // Check if event has a valid organizer email
     const recipientEmail = event.organizerEmail?.trim();
     if (!recipientEmail || !recipientEmail.includes('@')) {
-      return NextResponse.json({
-        success: true,
-        isLive: false,
-        reason: 'no_organizer_email',
-        message: 'Venue organizer has no direct email listed; inquiry saved to scout outbox in simulated mode.',
-      });
+      return NextResponse.json(
+        { error: 'Venue organizer has no direct email address listed for this event.' },
+        { status: 400 }
+      );
     }
 
     const { inboxId, inboxEmail } = await resolveAgentMailInbox(client);
@@ -65,7 +60,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      isLive: true,
       messageId: sendRes.messageId,
       agentmailThreadId: sendRes.threadId,
       agentEmail: inboxEmail,
@@ -76,7 +70,6 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Failed to send inquiry via AgentMail',
-        isLive: false,
       },
       { status: 500 }
     );
