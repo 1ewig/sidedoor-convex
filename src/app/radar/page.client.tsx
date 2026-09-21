@@ -79,7 +79,13 @@ export function RadarPageClient() {
       !isNaN(userCoords.lng);
 
     return allEvents.map((event) => {
-      if (hasValidCoords && event.coordinates?.lat && event.coordinates?.lng) {
+      if (
+        hasValidCoords &&
+        event.coordinates &&
+        typeof event.coordinates.lat === 'number' &&
+        typeof event.coordinates.lng === 'number' &&
+        (event.coordinates.lat !== 0 || event.coordinates.lng !== 0)
+      ) {
         const distanceKm = calculateHaversineDistanceKm(
           userCoords.lat,
           userCoords.lng,

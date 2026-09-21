@@ -7,6 +7,7 @@ import { pickValidatedImage } from '../images';
 import { calculateHaversineDistanceKm } from '../geo';
 import { toEventId } from './extraction';
 import { getGoogleApiKey, SIDEDOOR_MODEL } from './query-refiner';
+import { geocodeVenueOrAddress } from './geocoder';
 
 export const MAX_PIPELINE_CANDIDATES = 25;
 
@@ -144,7 +145,8 @@ const SemanticCuratorSchema = z.object({
 export async function curateCandidatesWithLLM(
   candidates: CandidateEvent[],
   userPrompt: string,
-  userCoordinates?: Coordinates
+  userCoordinates?: Coordinates,
+  locationHint?: string
 ): Promise<LocalEvent[]> {
   if (candidates.length === 0) return [];
 
@@ -195,29 +197,35 @@ For each candidate:
         !isNaN(cand.coordinates.lng) &&
         (cand.coordinates.lat !== 0 || cand.coordinates.lng !== 0);
 
+      // Resolve true venue/address coordinates if candidate did not contain them
+      let eventCoords: Coordinates | null = null;
+      if (hasCandCoords) {
+        eventCoords = cand.coordinates!;
+      } else {
+        eventCoords = await geocodeVenueOrAddress(cand.venueName, cand.address, locationHint);
+      }
+
       const hasUserCoords =
         userCoordinates &&
         typeof userCoordinates.lat === 'number' &&
         typeof userCoordinates.lng === 'number' &&
         !isNaN(userCoordinates.lat) &&
-        !isNaN(userCoordinates.lng);
-
-      const eventCoords: Coordinates = hasCandCoords
-        ? cand.coordinates!
-        : hasUserCoords
-        ? userCoordinates!
-        : { lat: 0, lng: 0 };
+        !isNaN(userCoordinates.lng) &&
+        (userCoordinates.lat !== 0 || userCoordinates.lng !== 0);
 
       let distanceKm: number | undefined = undefined;
 
-      if (hasUserCoords && hasCandCoords) {
+      if (hasUserCoords && eventCoords) {
         distanceKm = calculateHaversineDistanceKm(
           userCoordinates!.lat,
           userCoordinates!.lng,
-          cand.coordinates!.lat,
-          cand.coordinates!.lng
+          eventCoords.lat,
+          eventCoords.lng
         );
       }
+
+      // Final coordinates: real coordinates or safe neutral fallback (never contaminate with user coordinates)
+      const finalCoordinates: Coordinates = eventCoords || { lat: 0, lng: 0 };
 
       const rawImages = cand.coverImages && cand.coverImages.length > 0
         ? cand.coverImages
@@ -238,7 +246,7 @@ For each candidate:
         venueName: cand.venueName,
         address: cand.address,
         distanceKm,
-        coordinates: eventCoords,
+        coordinates: finalCoordinates,
         dateTime: cand.isoDate || new Date().toISOString(),
         formattedDate: cand.formattedDate || 'This Weekend',
         formattedTime: cand.formattedTime || '8:00 PM',

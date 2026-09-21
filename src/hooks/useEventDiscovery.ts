@@ -10,6 +10,7 @@ import { LocalEvent, ScoutLog, HybridDiscoveryStats } from '@/types';
 import { useScoutFilterStore } from '@/state/useScoutFilterStore';
 import { useLocationStore } from '@/state/useLocationStore';
 import { matchesSearchFilters } from '@/lib/discovery/filters';
+import { calculateHaversineDistanceKm } from '@/lib/geo';
 
 export function useEventDiscovery() {
   const scoutedEvents = useEventStore((state) => state.scoutedEvents);
@@ -42,16 +43,46 @@ export function useEventDiscovery() {
   const updateOutreachMutation = useMutation(api.events.updateOutreachStatus);
   const logRunMutation = useMutation(api.scoutRuns.logRun);
 
-  // Derive merged event list reactively during render
+  // Derive merged event list reactively during render with dynamic distance recalculation
   const events = useMemo(() => {
+    let merged: LocalEvent[];
     if (!convexEvents || !Array.isArray(convexEvents) || convexEvents.length === 0) {
-      return scoutedEvents;
+      merged = scoutedEvents;
+    } else {
+      const convexMapped = convexEvents as unknown as LocalEvent[];
+      const existingIds = new Set(scoutedEvents.map((e) => e.id));
+      const uniqueConvex = convexMapped.filter((e) => !existingIds.has(e.id));
+      merged = [...scoutedEvents, ...uniqueConvex];
     }
-    const convexMapped = convexEvents as unknown as LocalEvent[];
-    const existingIds = new Set(scoutedEvents.map((e) => e.id));
-    const uniqueConvex = convexMapped.filter((e) => !existingIds.has(e.id));
-    return [...scoutedEvents, ...uniqueConvex];
-  }, [convexEvents, scoutedEvents]);
+
+    const hasValidUserCoords =
+      userCoordinates &&
+      typeof userCoordinates.lat === 'number' &&
+      typeof userCoordinates.lng === 'number' &&
+      !isNaN(userCoordinates.lat) &&
+      !isNaN(userCoordinates.lng) &&
+      (userCoordinates.lat !== 0 || userCoordinates.lng !== 0);
+
+    if (!hasValidUserCoords) return merged;
+
+    return merged.map((event) => {
+      if (
+        event.coordinates &&
+        typeof event.coordinates.lat === 'number' &&
+        typeof event.coordinates.lng === 'number' &&
+        (event.coordinates.lat !== 0 || event.coordinates.lng !== 0)
+      ) {
+        const distanceKm = calculateHaversineDistanceKm(
+          userCoordinates.lat,
+          userCoordinates.lng,
+          event.coordinates.lat,
+          event.coordinates.lng
+        );
+        return { ...event, distanceKm };
+      }
+      return event;
+    });
+  }, [convexEvents, scoutedEvents, userCoordinates]);
 
   const [isScouting, setIsScouting] = useState<boolean>(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);

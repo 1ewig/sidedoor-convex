@@ -74,7 +74,7 @@ export async function runHybridEventDiscovery(
 
   console.log(`[Curator] ✨ Curating ${allCandidates.length} candidate events with Gemini...`);
   const curatorStart = Date.now();
-  const curatedEvents = await curateCandidatesWithLLM(allCandidates, userPrompt, userCoordinates);
+  const curatedEvents = await curateCandidatesWithLLM(allCandidates, userPrompt, userCoordinates, locationHint);
   const curationTimeSec = parseFloat(((Date.now() - curatorStart) / 1000).toFixed(2));
 
   console.log(

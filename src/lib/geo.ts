@@ -41,6 +41,24 @@ export function calculateHaversineDistanceKm(
   lat2: number,
   lon2: number
 ): number {
+  if (
+    typeof lat1 !== 'number' ||
+    typeof lon1 !== 'number' ||
+    typeof lat2 !== 'number' ||
+    typeof lon2 !== 'number' ||
+    isNaN(lat1) ||
+    isNaN(lon1) ||
+    isNaN(lat2) ||
+    isNaN(lon2)
+  ) {
+    return 0;
+  }
+
+  // Protect against uninitialized (0, 0) Null Island coordinates
+  if ((lat1 === 0 && lon1 === 0) || (lat2 === 0 && lon2 === 0)) {
+    return 0;
+  }
+
   const R = 6371; // Earth's mean radius in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -49,7 +67,10 @@ export function calculateHaversineDistanceKm(
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  // Clamp 'a' to [0, 1] to prevent floating point imprecision causing NaN on antipodal points
+  const safeA = Math.min(1, Math.max(0, a));
+  const c = 2 * Math.atan2(Math.sqrt(safeA), Math.sqrt(1 - safeA));
   return Number((R * c).toFixed(1));
 }
 
