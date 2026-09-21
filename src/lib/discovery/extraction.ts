@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { EventCategory } from '@/types';
 import { CandidateEvent, ScrapedPageInput } from '@/types/discovery';
 import { getTemporalContext } from '../temporal';
-import { cleanHtmlText } from '../html';
+import { cleanHtmlText, cleanText, stripMarkdown } from '../html';
 import { getGoogleApiKey, SIDEDOOR_MODEL } from './query-refiner';
 
 export const MARKDOWN_EXCERPT_LIMIT = 15000;
@@ -75,6 +75,7 @@ const MONTHS: Record<string, number> = {
 };
 
 const MONTH_NAMES = 'jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec';
+const DAY_NAMES = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun';
 
 export function isRangeEnd(text: string, idx: number): boolean {
   const before = text.slice(Math.max(0, idx - 24), idx).toLowerCase();
@@ -196,6 +197,8 @@ export function extractPriceInfo(text: string): { price: string; isFree: boolean
 
 export function stripDateTimeText(s: string): string {
   return s
+    .replace(new RegExp(`\\b(?:${DAY_NAMES}),?\\s+(?=(?:${MONTH_NAMES})|\\d{1,2}|at\\b|from\\b|doors\\b|[ap]\\.?m\\.?)`, 'gi'), ' ')
+    .replace(new RegExp(`^\\s*(?:${DAY_NAMES})\\s*$`, 'gi'), ' ')
     .replace(
       new RegExp(`\\b(?:${MONTH_NAMES})[a-z]*\\.?\\s*\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?\\b`, 'gi'),
       ' '
@@ -206,9 +209,11 @@ export function stripDateTimeText(s: string): string {
     )
     .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
     .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, ' ')
-    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi, ' ')
+    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?|am|pm)\b/gi, ' ')
     .replace(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g, ' ')
-    .replace(/\s+(?:on|at|from)\s*$/i, '')
+    .replace(/\b(?:a\.?m\.?|p\.?m\.?)\b/gi, ' ')
+    .replace(/\s+(?:on|at|from|to|doors)\s*$/i, '')
+    .replace(/^\s*(?:on|at|from|to|doors)\s+/i, '')
     .replace(/\s+/g, ' ')
     .replace(/^[.,;:•·|\-–\s]+|[.,;:•·|\-–\s]+$/g, '')
     .trim();
@@ -221,9 +226,48 @@ export function isListingPage(url: string, title?: string): boolean {
   return LISTING_HINTS.test(title || '') || LISTING_HINTS.test(url);
 }
 
+export function isValidEventTitle(title?: string): boolean {
+  if (!title) return false;
+  const cleaned = cleanText(title);
+  if (cleaned.length < 4 || cleaned.length > 100) return false;
+
+  // Reject pure markdown fragment residue or bare URLs
+  if (/^\]\([^)]*\)?$/.test(cleaned) || (/^\[.*\]$/.test(cleaned) && cleaned.length < 6) || /^https?:\/\//i.test(cleaned)) {
+    return false;
+  }
+
+  // Reject standalone days of the week, temporal words, or calendar terms
+  if (/^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun|today|tonight|tomorrow|weekend|weekdays?|daily|monthly|annually)$/i.test(cleaned)) {
+    return false;
+  }
+
+  // Must contain at least 3 letters
+  const letters = cleaned.match(/[a-zA-Z]/g);
+  if (!letters || letters.length < 3) return false;
+
+  // Reject strings made up almost entirely of time suffixes (e.g. "p.m. p.m.", "am/pm", "10am"), digits, or punctuation
+  const normalized = cleaned.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const withoutTimeOrPunct = normalized
+    .replace(/(?:am|pm|est|edt|pst|pdt|cst|cdt|gmt|utc)/g, '')
+    .replace(/[0-9]/g, '');
+  if (withoutTimeOrPunct.length < 3) return false;
+
+  // Reject generic listing prefixes or metadata labels
+  if (/^(?:top|events?|calendar|things to do|upcoming|tickets|location|venue|where|when|details|admission|price)\s*[:\-–]?\s*$/i.test(cleaned)) {
+    return false;
+  }
+
+  return true;
+}
+
 export function mineListingEvents(page: ScrapedPageInput, maxEvents = 6): CandidateEvent[] {
-  const content = `${page.title || ''}\n${page.markdown || ''}`;
-  if (!content) return [];
+  const rawContent = `${page.title || ''}\n${page.markdown || ''}`;
+  if (!rawContent) return [];
+
+  // Decode HTML entities and unwrap markdown links BEFORE splitting segments,
+  // so semicolons in HTML entities (e.g. &#038;, &amp;) don't cause segment splits,
+  // and markdown links don't split between anchor and URL.
+  const content = stripMarkdown(cleanHtmlText(rawContent));
 
   const segments = content
     .split(/\s*[;•]\s*|\s*·\s*|\s*\|\s*|\r?\n/)
@@ -240,22 +284,24 @@ export function mineListingEvents(page: ScrapedPageInput, maxEvents = 6): Candid
     const parsedDate = parseDateText(seg, now);
     if (!parsedDate.iso && !parsedDate.time) continue;
 
-    let title = stripDateTimeText(seg);
-    if (title.length < 4 && i > 0) {
-      const prev = stripDateTimeText(segments[i - 1]);
-      if (prev.length >= 4 && prev.length <= 80) {
+    let title = cleanText(stripDateTimeText(seg));
+    if (!isValidEventTitle(title) && i > 0) {
+      const prev = cleanText(stripDateTimeText(segments[i - 1]));
+      if (isValidEventTitle(prev)) {
         title = prev;
       }
     }
 
-    if (title.length < 4 || title.length > 90) continue;
-    if (/^(top|events?|calendar|things to do|upcoming|tickets)/i.test(title)) continue;
+    if (!isValidEventTitle(title)) continue;
 
-    let venueName = cleanHtmlText(page.title || 'Local Venue');
+    let venueName = cleanText(page.title || 'Local Venue');
     if (i + 1 < segments.length) {
       const nextSeg = segments[i + 1];
       if (!parseDateText(nextSeg, now).iso && nextSeg.length >= 3 && nextSeg.length <= 60) {
-        venueName = stripDateTimeText(nextSeg) || venueName;
+        const nextClean = cleanText(stripDateTimeText(nextSeg));
+        if (nextClean.length >= 3 && !/^[$€£0-9]/.test(nextClean) && !/^(?:free|rsvps?|tickets?|door)/i.test(nextClean)) {
+          venueName = nextClean;
+        }
       }
     }
 
@@ -339,33 +385,37 @@ Only extract real gatherings. Skip generic venue information or past events.`,
     prompt: `User Query: "${userPrompt}"\n\nContent:\n${combined}`,
   });
 
-  return result.object.events.map((evt) => {
-    const pageIndex =
-      typeof evt.sourcePageIndex === 'number' &&
-      evt.sourcePageIndex >= 1 &&
-      evt.sourcePageIndex <= pages.length
-        ? evt.sourcePageIndex - 1
-        : 0;
-    const sourcePage = pages[pageIndex] || pages[0];
+  return result.object.events
+    .map((evt) => {
+      const pageIndex =
+        typeof evt.sourcePageIndex === 'number' &&
+        evt.sourcePageIndex >= 1 &&
+        evt.sourcePageIndex <= pages.length
+          ? evt.sourcePageIndex - 1
+          : 0;
+      const sourcePage = pages[pageIndex] || pages[0];
+      const title = cleanText(evt.title);
+      const venueName = cleanText(evt.venueName);
 
-    return {
-      id: createCandidateId('unstructured'),
-      sourceLane: 'unstructured' as const,
-      title: evt.title,
-      category: evt.category as EventCategory,
-      venueName: evt.venueName,
-      address: evt.address,
-      coordinates: evt.coordinates,
-      formattedDate: evt.formattedDate,
-      formattedTime: evt.formattedTime,
-      price: evt.price,
-      isFree: evt.isFree || /free|pwyc/i.test(evt.price),
-      coverImage: sourcePage?.ogImage,
-      coverImages: sourcePage?.imageCandidates || (sourcePage?.ogImage ? [sourcePage.ogImage] : []),
-      sourceUrl: sourcePage?.url || '',
-      organizerName: evt.organizerName || evt.venueName,
-      organizerEmail: evt.organizerEmail || '',
-      rawSnippet: evt.description,
-    };
-  });
+      return {
+        id: createCandidateId('unstructured'),
+        sourceLane: 'unstructured' as const,
+        title,
+        category: evt.category as EventCategory,
+        venueName,
+        address: evt.address ? cleanText(evt.address) : venueName,
+        coordinates: evt.coordinates,
+        formattedDate: evt.formattedDate,
+        formattedTime: evt.formattedTime,
+        price: evt.price,
+        isFree: evt.isFree || /free|pwyc/i.test(evt.price),
+        coverImage: sourcePage?.ogImage,
+        coverImages: sourcePage?.imageCandidates || (sourcePage?.ogImage ? [sourcePage.ogImage] : []),
+        sourceUrl: sourcePage?.url || '',
+        organizerName: evt.organizerName ? cleanText(evt.organizerName) : venueName,
+        organizerEmail: evt.organizerEmail || '',
+        rawSnippet: evt.description,
+      };
+    })
+    .filter((cand) => isValidEventTitle(cand.title));
 }

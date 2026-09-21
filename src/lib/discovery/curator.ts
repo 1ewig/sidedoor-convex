@@ -5,7 +5,8 @@ import { EventCategory, LocalEvent, Coordinates } from '@/types';
 import { CandidateEvent } from '@/types/discovery';
 import { pickValidatedImage } from '../images';
 import { calculateHaversineDistanceKm } from '../geo';
-import { toEventId } from './extraction';
+import { cleanText } from '../html';
+import { toEventId, isValidEventTitle } from './extraction';
 import { getGoogleApiKey, SIDEDOOR_MODEL } from './query-refiner';
 import { geocodeVenueOrAddress } from './geocoder';
 
@@ -148,18 +149,19 @@ export async function curateCandidatesWithLLM(
   userCoordinates?: Coordinates,
   locationHint?: string
 ): Promise<LocalEvent[]> {
-  if (candidates.length === 0) return [];
+  const validCandidates = candidates.filter((c) => isValidEventTitle(c.title));
+  if (validCandidates.length === 0) return [];
 
   const apiKey = getGoogleApiKey();
   if (!apiKey) {
     throw new Error('Missing Google Gemini API Key. Please set GOOGLE_GENERATIVE_AI_API_KEY in .env.local.');
   }
 
-  const compactCandidates = candidates.map((c) => ({
+  const compactCandidates = validCandidates.map((c) => ({
     id: c.id,
-    title: c.title,
-    venue: c.venueName,
-    location: c.address,
+    title: cleanText(c.title),
+    venue: cleanText(c.venueName),
+    location: c.address ? cleanText(c.address) : cleanText(c.venueName),
     date: c.formattedDate,
     price: c.price,
     notes: c.rawSnippet || '',
@@ -186,7 +188,7 @@ For each candidate:
 
   // Pre-resolve unique venue locations in a single parallel batch to avoid redundant network calls
   const venuesToGeocode = new Map<string, { venue: string; address?: string }>();
-  for (const cand of candidates) {
+  for (const cand of validCandidates) {
     const hasCandCoords =
       cand.coordinates &&
       typeof cand.coordinates.lat === 'number' &&
@@ -214,7 +216,7 @@ For each candidate:
   }
 
   const curatedResults = await Promise.all(
-    candidates.map(async (cand): Promise<LocalEvent | null> => {
+    validCandidates.map(async (cand): Promise<LocalEvent | null> => {
       const curation = lookup.get(cand.id);
       if (curation && curation.matchScore < 60) return null;
 
@@ -263,14 +265,18 @@ For each candidate:
         ? [validatedImage, ...rawImages.filter((u) => u !== validatedImage)]
         : rawImages;
 
+      const cleanTitle = cleanText(cand.title);
+      const cleanVenue = cleanText(cand.venueName);
+      const cleanAddress = cand.address ? cleanText(cand.address) : cleanVenue;
+
       return {
         id: toEventId(cand.id),
-        title: cand.title,
+        title: cleanTitle,
         category: (curation?.category || cand.category || 'music') as EventCategory,
-        tagline: curation?.tagline || `Live at ${cand.venueName}`,
-        description: curation?.editorialOverview || cand.rawSnippet || `Gathering hosted at ${cand.venueName}.`,
-        venueName: cand.venueName,
-        address: cand.address,
+        tagline: cleanText(curation?.tagline || `Live at ${cleanVenue}`),
+        description: cleanText(curation?.editorialOverview || cand.rawSnippet || `Gathering hosted at ${cleanVenue}.`),
+        venueName: cleanVenue,
+        address: cleanAddress,
         distanceKm,
         coordinates: finalCoordinates,
         dateTime: cand.isoDate || new Date().toISOString(),
@@ -280,7 +286,7 @@ For each candidate:
         isFree: cand.isFree,
         matchScore: curation?.matchScore || 85,
         vibeTags: curation?.vibeTags || ['#Local', '#Culture', '#DIY'],
-        organizerName: cand.organizerName || cand.venueName,
+        organizerName: cleanText(cand.organizerName || cleanVenue),
         organizerEmail: (() => {
           let email = (cand.organizerEmail || curation?.suggestedOrganizerEmail || '').trim();
           if (!email || !email.includes('@')) {
@@ -291,8 +297,8 @@ For each candidate:
             } catch {}
           }
           if (!email || !email.includes('@')) {
-            const cleanVenue = cand.venueName.toLowerCase().replace(/[^a-z0-9]/g, '');
-            email = `contact@${cleanVenue || 'venue'}.com`;
+            const cleanDomain = cleanVenue.toLowerCase().replace(/[^a-z0-9]/g, '');
+            email = `contact@${cleanDomain || 'venue'}.com`;
           }
           return email;
         })(),
