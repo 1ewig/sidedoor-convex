@@ -134,7 +134,7 @@ export function useEventDiscovery() {
         id: `log-${Date.now()}-1`,
         timestamp: timeStr(),
         level: 'info',
-        message: `Agent scouting (⚡ Fast • ${filters.when}): "${promptText}"`,
+        message: `Scouting gatherings (${filters.when}): "${promptText}"`,
       };
       appendLog(startLog);
 
@@ -144,7 +144,7 @@ export function useEventDiscovery() {
           id: `log-${Date.now()}-2`,
           timestamp: timeStr(),
           level: 'scrape',
-          message: `⚡ Fast scan for ${filters.when} via venue calendars & JSON-LD...`,
+          message: `Scanning indie venue calendars, underground flyers, and local community boards...`,
         };
         appendLog(crawlLog);
 

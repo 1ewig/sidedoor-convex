@@ -1,4 +1,4 @@
-import { ArrowRight, Loader2, Sparkles, CornerDownLeft } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 
 export interface FloatingDockProps {
   prompt: string;
@@ -48,8 +48,6 @@ export function FloatingDock({
             : 'border-[var(--theme-border-subtle)] hover:border-[var(--theme-border-strong)] focus-within:border-[var(--theme-text-primary)]/40 focus-within:shadow-[var(--shadow-float)]'
         }`}
       >
-        <Sparkles className="w-4 h-4 text-[var(--theme-text-muted)] shrink-0 opacity-70" />
-
         {/* Input */}
         <input
           id="scout-prompt-input"
@@ -62,18 +60,10 @@ export function FloatingDock({
           className="flex-1 bg-transparent text-[var(--text-sm)] text-[var(--theme-text-primary)] placeholder-[var(--theme-text-muted)] focus:outline-none min-w-0 font-sans disabled:opacity-60"
           placeholder={
             isScouting
-              ? 'Running ⚡ Fast single-pass calendar scan...'
+              ? 'Scanning indie venue calendars, underground flyers, and local community boards...'
               : 'What kind of gatherings are you scouting for?'
           }
         />
-
-        {/* Enter key hint when prompt is present and idle */}
-        {prompt.trim().length > 0 && !isScouting && (
-          <span className="hidden sm:inline-flex items-center gap-1 text-[var(--text-2xs)] font-mono text-[var(--theme-text-muted)] px-1.5 py-0.5 rounded bg-[var(--theme-bg-base)] border border-[var(--theme-border-subtle)] shrink-0">
-            <span>return</span>
-            <CornerDownLeft className="w-3 h-3" />
-          </span>
-        )}
 
         {/* Action Trigger Button */}
         <button

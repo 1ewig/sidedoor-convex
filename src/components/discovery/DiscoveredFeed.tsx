@@ -119,10 +119,10 @@ export function DiscoveredFeed({
                 <h4 className="text-[var(--text-xs)] font-medium text-[var(--theme-text-primary)] font-sans">
                   Autonomous Scout Active
                 </h4>
-                <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans">
+                <p className="text-[var(--text-2xs)] text-[var(--theme-text-muted)] font-sans transition-all duration-300">
                   {activeStage === 1 && 'Scanning indie venue calendars, underground flyers, and local community boards...'}
-                  {activeStage === 2 && 'Extracting dates, venue addresses, door policies, and JSON-LD structured data...'}
-                  {activeStage === 3 && 'Gemini evaluating vibe compatibility, ticket availability, and editorial curation...'}
+                  {activeStage === 2 && 'Verifying dates, venue addresses, secret locations, and gathering details...'}
+                  {activeStage === 3 && 'Matching atmospheric vibes, intimate aesthetics, and curation...'}
                 </p>
               </div>
             </div>
