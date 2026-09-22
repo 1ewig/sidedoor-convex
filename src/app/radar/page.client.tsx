@@ -39,7 +39,7 @@ export function RadarPageClient() {
   // Global unearthings query from Convex (Option A: Global Cultural Wire)
   const convexEvents = useQuery(
     api.events.list,
-    isConfigured ? { limit: 100 } : 'skip'
+    isConfigured ? {} : 'skip'
   );
 
   const {
