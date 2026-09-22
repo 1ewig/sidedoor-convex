@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useEventDiscovery } from '@/hooks/useEventDiscovery';
 import { useAgentMail } from '@/hooks/useAgentMail';
 import { useUserLocation } from '@/hooks/useUserLocation';
@@ -20,6 +21,9 @@ export function PageClient() {
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<LocalEvent | null>(null);
+
+  const searchParams = useSearchParams();
+  const initialQueryHandled = useRef(false);
 
   const resetFilters = useScoutFilterStore((state) => state.resetFilters);
 
@@ -50,6 +54,22 @@ export function PageClient() {
     locateMe,
     setCustomLocation,
   } = useUserLocation();
+
+  // Auto-scout if ?q=... is passed from the landing page
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && q.trim() && !initialQueryHandled.current) {
+      initialQueryHandled.current = true;
+      const cleanQ = q.trim();
+      updateFilters({ query: cleanQ });
+      setIsFeedOpen(true);
+      triggerScout(cleanQ);
+      setTimeout(() => {
+        const feedElement = document.getElementById('resultsFeed');
+        feedElement?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+    }
+  }, [searchParams, updateFilters, setIsFeedOpen, triggerScout]);
 
   const handleResetDefaults = () => {
     resetFilters();
@@ -127,6 +147,15 @@ export function PageClient() {
             isScouting={isScouting}
             onPromptChange={(val) => updateFilters({ query: val })}
             onTriggerDiscovery={handleTriggerDiscovery}
+            onSelectSuggestion={(val: string) => {
+              updateFilters({ query: val });
+              setIsFeedOpen(true);
+              triggerScout(val);
+              setTimeout(() => {
+                const feedElement = document.getElementById('resultsFeed');
+                feedElement?.scrollIntoView({ behavior: 'smooth' });
+              }, 100);
+            }}
           />
         </section>
 
