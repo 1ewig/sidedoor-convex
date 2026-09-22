@@ -176,4 +176,4 @@ SideDoor adheres to the **Monochromatic Editorial Ink** design system, combining
 - [x] **Public Git Repository**: Clean, fully tracked, and synchronized with `origin/main`.
 - [x] **`hackathon.md`**: Fully detailed, evidence-based build log documenting architecture and git commit progression.
 - [x] **Live Deployment**: Live and operational full-stack on Convex (`https://artful-octopus-475.convex.site`).
-- [x] **Demo Video**: 3-minute presentation showcasing autonomous scouting, live Convex sync, and AgentMail correspondence.
+- [x] **Demo Video**: 3-minute presentation showcasing autonomous scouting, live Convex sync, and AgentMail correspondence ([`public/video/SideDoor-Demo.mp4`](https://github.com/1ewig/sidedoor-convex/raw/main/public/video/SideDoor-Demo.mp4)).
