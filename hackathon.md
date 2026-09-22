@@ -3,7 +3,10 @@
 > **Project Name**: SideDoor  
 > **Tagline**: Autonomous Personal Scout & Real-Time Intelligence for Hyper-Local Cultural Gatherings  
 > **Hackathon**: Convex "All Gas" Hackathon (September 2026)  
+> **Live Web App**: [https://artful-octopus-475.convex.site](https://artful-octopus-475.convex.site)  
 > **Repository**: [https://github.com/1ewig/sidedoor-convex](https://github.com/1ewig/sidedoor-convex)  
+> **Convex Backend**: `https://artful-octopus-475.convex.cloud` ([Dashboard](https://dashboard.convex.dev/t/asad-a/sidedoor/artful-octopus-475))  
+> **Inbound Webhook Endpoint**: `https://artful-octopus-475.convex.site/agent-mail/webhook`  
 > **Target Track / Stack**: Convex (Reactive Backend & Real-time Database) + Firecrawl (Autonomous Multi-Lane Web Scraping) + AgentMail (Two-Way Inbox & Autonomous Organizer Correspondence) + Next.js 16 (Turbopack, TypeScript 7, Tailwind CSS v4, Google Gemini AI)
 
 ---
@@ -135,10 +138,12 @@ The repository was built from the ground up specifically for the Convex All Gas 
 - `88a6cfb` & `033463f` **feat(discovery): add query batch dividers, batch dismissal, and batchId validator in Convex**: Clean UI batch segregation for consecutive scouting sessions.
 - `d43d654` & `f437f4b` **perf & fix: optimize crawl limit, streamline geocoding, sanitize HTML tags, clean venue names, and reject table headers**: Production-grade data hygiene.
 
-### Phase 7: Full-Stack Static Hosting Migration on Convex.site
-- **Serverless Convex Migration**: Transitioned all Next.js API routes (`/api/scout`, `/api/agent-mail/send`, `/api/agent-mail/webhook`, `/api/geocode`, `/api/locate`, `/api/img`) to Convex Node Actions (`api.scout.run`, `api.agentMail.sendInquiry`, `api.agentMail.sendReply`), Convex HTTP Actions (`POST /agent-mail/webhook`), and client-side Nominatim geocoding.
-- **`@convex-dev/static-hosting` Integration**: Mounted static hosting in `convex/convex.config.ts` and `convex/http.ts`, pairing with Next.js Turbopack static export (`output: 'export'`).
-- **Single Deployment Target**: Full-stack application deployed and hosted directly on `https://artful-octopus-475.convex.site`, eliminating any separate hosting provider.
+### Phase 7: Full-Stack Static Hosting Migration on Convex.site & Final Polish
+- `04a12ef` **feat(hosting): migrate full-stack architecture to convex static hosting**: Transitioned all Next.js API routes to Convex Node Actions (`api.scout.run`, `api.agentMail.sendInquiry`), HTTP actions, and static export.
+- `771914e` **feat(landing): add minimal and human editorial landing page**: Shipped immersive, typography-driven entrance view.
+- `2447538` **feat: simplify floating dock UI and add natural language scout loader messages**: Refined discovery dock and multi-stage status indicators.
+- `96cce4c` **fix(radar): remove hardcoded 100 limit on global events query**: Enabled full-table reactive streaming across all discovered gatherings.
+- **Single Deployment Target**: Full-stack application deployed and hosted directly on `https://artful-octopus-475.convex.site`, eliminating any external hosting dependencies.
 
 ---
 
