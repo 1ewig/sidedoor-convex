@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useConvexConfig } from '@/components/providers/ConvexClientProvider';
 import { useSessionStore } from '@/state/useSessionStore';
@@ -40,9 +40,8 @@ export function useEventDiscovery() {
     api.events.list,
     isConfigured && sessionId ? { sessionId } : 'skip'
   );
-  const saveBatchMutation = useMutation(api.events.saveBatch);
+  const runScoutAction = useAction(api.scout.run);
   const updateOutreachMutation = useMutation(api.events.updateOutreachStatus);
-  const logRunMutation = useMutation(api.scoutRuns.logRun);
 
   // Derive merged event list reactively during render with dynamic distance recalculation
   const events = useMemo(() => {
@@ -149,25 +148,22 @@ export function useEventDiscovery() {
         };
         appendLog(crawlLog);
 
-        console.log(`🚀 Dispatching request to /api/scout [Fast Scout, When: ${filters.when}]...`);
+        if (!isConfigured) {
+          throw new Error('SideDoor needs a Convex deployment before scouting can start.');
+        }
 
-        const res = await fetch('/api/scout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: promptText,
-            location: effectiveLocation,
-            coordinates: userCoordinates,
-            mode: filters.scoutMode,
-            when: filters.when,
-            country: countryCode,
-          }),
+        console.log(`🚀 Dispatching Convex scout action [Fast Scout, When: ${filters.when}]...`);
+        const data = await runScoutAction({
+          prompt: promptText,
+          location: effectiveLocation,
+          coordinates: userCoordinates,
+          when: filters.when,
+          country: countryCode,
+          sessionId,
         });
-
-        const data = await res.json();
         const clientDuration = ((performance.now() - clientStartTime) / 1000).toFixed(2);
 
-        console.log(`📦 Received response (${res.status}) in ${clientDuration}s:`, data);
+        console.log(`📦 Received Convex action response in ${clientDuration}s:`, data);
 
         if (data.queries && Array.isArray(data.queries)) {
           console.log('🔍 Generated Search Angles:');
@@ -179,16 +175,17 @@ export function useEventDiscovery() {
         }
 
         if (data.stats) {
+          const curationTime = 'curationTimeSec' in data.stats ? data.stats.curationTimeSec : 0;
           console.log('📊 Pipeline Telemetry:', {
             'Scraped Pages': data.pagesScrapedCount,
             'Fast Lane (JSON-LD)': data.stats.structuredCount,
             'Fallback Lane (Deep AI)': data.stats.unstructuredCount,
-            'Curator Time (sec)': `${data.stats.curationTimeSec}s`,
+            'Curator Time (sec)': `${curationTime}s`,
             'Total Discovered': data.events?.length ?? 0,
           });
         }
 
-        if (res.ok && data.success && Array.isArray(data.events) && data.events.length > 0) {
+        if (data.success && Array.isArray(data.events) && data.events.length > 0) {
           const stats = data.stats as HybridDiscoveryStats | undefined;
           if (stats) {
             setHybridStats(stats);
@@ -243,59 +240,6 @@ export function useEventDiscovery() {
           appendScoutedEvents(taggedEvents);
           setIsFeedOpen(true);
 
-          // Persist discovered events and scout log to Convex if configured
-          if (isConfigured) {
-            saveBatchMutation({
-              events: taggedEvents.map((e: LocalEvent) => ({
-                id: e.id,
-                title: e.title,
-                category: e.category,
-                tagline: e.tagline,
-                description: e.description,
-                venueName: e.venueName,
-                address: e.address,
-                distanceKm: e.distanceKm,
-                coordinates: e.coordinates,
-                dateTime: e.dateTime,
-                formattedDate: e.formattedDate,
-                formattedTime: e.formattedTime,
-                price: e.price,
-                isFree: e.isFree,
-                matchScore: e.matchScore,
-                vibeTags: e.vibeTags,
-                organizerName: e.organizerName,
-                organizerEmail: e.organizerEmail,
-                sourceUrl: e.sourceUrl,
-                firecrawlExtractedAt: e.firecrawlExtractedAt,
-                ticketsRemaining: e.ticketsRemaining,
-                coverImage: e.coverImage,
-                coverImages: e.coverImages,
-                outreachStatus: e.outreachStatus || 'none',
-                batchId: e.batchId,
-                searchPrompt: e.searchPrompt,
-                searchLocation: e.searchLocation,
-                scoutedAt: e.scoutedAt,
-                sessionId,
-              })),
-            }).catch((err: unknown) => {
-              console.warn('⚠️ [Convex] Failed to save events batch:', err);
-            });
-
-            logRunMutation({
-              sessionId,
-              prompt: promptText,
-              location: effectiveLocation,
-              scoutMode: filters.scoutMode,
-              structuredCount: data.stats?.structuredCount,
-              unstructuredCount: data.stats?.unstructuredCount,
-              pagesScrapedCount: data.pagesScrapedCount,
-              totalEventsFound: data.events.length,
-              durationSec: Number(clientDuration),
-            }).catch((err: unknown) => {
-              console.warn('⚠️ [Convex] Failed to log scout run:', err);
-            });
-          }
-
           if (data.events[0]) {
             setSelectedEventId(data.events[0].id);
           }
@@ -304,7 +248,7 @@ export function useEventDiscovery() {
         }
 
         // If no events found or API warned
-        const warnMessage = data.error || data.message || 'No live gatherings found for this query.';
+        const warnMessage = ('message' in data && data.message) || 'No live gatherings found for this query.';
         console.warn('⚠️ Scout Warning:', warnMessage);
         const warnLog: ScoutLog = {
           id: `log-${Date.now()}-warn`,
@@ -337,8 +281,7 @@ export function useEventDiscovery() {
       isConfigured,
       isScouting,
       locationLabel,
-      logRunMutation,
-      saveBatchMutation,
+      runScoutAction,
       sessionId,
       setHybridStats,
       setIsFeedOpen,

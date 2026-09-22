@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserLocation, Coordinates } from '@/types';
+import {
+  locateByIp,
+  reverseGeocodeLocation,
+  searchLocationSuggestions,
+} from '@/lib/location';
 
 export const DEFAULT_FALLBACK_LABEL = 'Detecting location...';
 
@@ -62,20 +67,7 @@ export const useLocationStore = create<LocationState>()(
 
       searchLocations: async (query: string) => {
         if (!query || query.trim().length < 2) return [];
-        try {
-          const res = await fetch(`/api/geocode?q=${encodeURIComponent(query.trim())}`);
-          if (res.ok) {
-            const data = await res.json();
-            return (data.results || []) as Array<{
-              label: string;
-              fullAddress: string;
-              coordinates: Coordinates;
-            }>;
-          }
-        } catch {
-          // Search failed
-        }
-        return [];
+        return searchLocationSuggestions(query);
       },
 
       locateMe: async () => {
@@ -98,38 +90,18 @@ export const useLocationStore = create<LocationState>()(
               );
             });
 
-            // If GPS returned coordinates, reverse-geocode via /api/geocode
-            try {
-              const res = await fetch(`/api/geocode?lat=${coords.lat}&lng=${coords.lng}`);
-              if (res.ok) {
-                const data = await res.json();
-                if (data.label) {
-                  set({
-                    location: {
-                      label: data.label,
-                      coordinates: coords,
-                      countryCode: data.countryCode,
-                    },
-                    isUserExplicit: true,
-                    isLocating: false,
-                    error: null,
-                  });
-                  return;
-                }
-              }
-            } catch {
-              // Geocode fetch failed, keep coordinates as fallback label
-              set({
-                location: {
-                  label: `${coords.lat.toFixed(3)}°N, ${coords.lng.toFixed(3)}°E`,
-                  coordinates: coords,
-                },
-                isUserExplicit: true,
-                isLocating: false,
-                error: null,
-              });
-              return;
-            }
+            const resolved = await reverseGeocodeLocation(coords);
+            set({
+              location: {
+                label: resolved?.label || `${coords.lat.toFixed(3)}°N, ${coords.lng.toFixed(3)}°E`,
+                coordinates: coords,
+                countryCode: resolved?.countryCode,
+              },
+              isUserExplicit: true,
+              isLocating: false,
+              error: null,
+            });
+            return;
           } catch {
             // Browser GPS denied or unavailable
           }
@@ -138,22 +110,15 @@ export const useLocationStore = create<LocationState>()(
         // 2. Server-side IP Geolocation fallback
         if (!gpsSucceeded) {
           try {
-            const res = await fetch('/api/locate', { cache: 'no-store' });
-            if (res.ok) {
-              const data = await res.json();
-              if (data.label && data.coordinates) {
-                set({
-                  location: {
-                    label: data.label,
-                    coordinates: data.coordinates,
-                    countryCode: data.countryCode,
-                  },
-                  isUserExplicit: true,
-                  isLocating: false,
-                  error: null,
-                });
-                return;
-              }
+            const resolved = await locateByIp();
+            if (resolved) {
+              set({
+                location: resolved,
+                isUserExplicit: true,
+                isLocating: false,
+                error: null,
+              });
+              return;
             }
             set({
               error: 'Could not detect location. Please select or search your city.',
@@ -176,18 +141,13 @@ export const useLocationStore = create<LocationState>()(
         }
 
         // Auto-detect silently in the background
-        fetch('/api/locate', { cache: 'no-store' })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data) => {
-            if (data?.label && data?.coordinates) {
+        locateByIp()
+          .then((resolved) => {
+            if (resolved) {
               const current = get();
               if (!current.isUserExplicit) {
                 set({
-                  location: {
-                    label: data.label,
-                    coordinates: data.coordinates,
-                    countryCode: data.countryCode,
-                  },
+                  location: resolved,
                   error: null,
                 });
               }

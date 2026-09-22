@@ -50,6 +50,11 @@ export const list = query({
   },
 });
 
+export const getForDispatch = query({
+  args: { threadId: v.id('threads') },
+  handler: async (ctx, args) => ctx.db.get(args.threadId),
+});
+
 export const createInquiry = mutation({
   args: {
     sessionId: v.string(),

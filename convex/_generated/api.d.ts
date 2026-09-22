@@ -8,7 +8,10 @@
  * @module
  */
 
+import type * as agentMail from "../agentMail.js";
 import type * as events from "../events.js";
+import type * as http from "../http.js";
+import type * as scout from "../scout.js";
 import type * as scoutRuns from "../scoutRuns.js";
 import type * as threads from "../threads.js";
 
@@ -19,7 +22,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agentMail: typeof agentMail;
   events: typeof events;
+  http: typeof http;
+  scout: typeof scout;
   scoutRuns: typeof scoutRuns;
   threads: typeof threads;
 }>;
@@ -50,4 +56,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  staticHosting: import("@convex-dev/static-hosting/_generated/component.js").ComponentApi<"staticHosting">;
+};

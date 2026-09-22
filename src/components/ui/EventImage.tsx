@@ -14,13 +14,10 @@ interface EventImageProps {
   className?: string;
 }
 
-/** Routes a remote image through the same-origin proxy safety net. */
-function toProxiedSrc(remoteUrl: string): string {
-  return `/api/img?src=${encodeURIComponent(remoteUrl)}`;
-}
-
 /**
- * Layer 3 of the image system: resilient event image renderer.
+ * Layer 3 of the image system: resilient event image renderer for static
+ * hosting. The browser requests each remote image without a referrer and
+ * advances to the next candidate when a host rejects hotlinking.
  *
  * Walks the ranked candidate list on `onError`; when every candidate fails it
  * renders a themed editorial placeholder (venue initial + icon) so the UI never
@@ -58,11 +55,12 @@ export function EventImage({
         <div className="absolute inset-0 bg-[var(--theme-bg-elevated)] animate-pulse" />
       )}
       <Image
-        src={toProxiedSrc(current)}
+        src={current}
         alt={alt}
         fill
         sizes={sizes}
         className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+        referrerPolicy="no-referrer"
         onLoad={() => setLoaded(true)}
         onError={() => {
           setLoaded(false);

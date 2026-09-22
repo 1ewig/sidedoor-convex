@@ -11,6 +11,7 @@ import {
 } from 'maplibre-gl';
 import { Coordinates } from '@/types';
 import { createGeoJSONCircle } from '@/lib/geo';
+import { reverseGeocodeLocation, searchLocationSuggestions } from '@/lib/location';
 
 // Clean, reliable, unwatermarked OpenStreetMap tiles (100% open-source, no API key required)
 const OSM_STYLE: StyleSpecification = {
@@ -127,14 +128,9 @@ export function useLocationPinMap({
   const reverseGeocode = useCallback(async (coords: Coordinates) => {
     setIsResolvingAddress(true);
     try {
-      const res = await fetch(`/api/geocode?lat=${coords.lat}&lng=${coords.lng}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.label) {
-          setResolvedLabel(data.label);
-        } else if (data.address) {
-          setResolvedLabel(data.address);
-        }
+      const resolved = await reverseGeocodeLocation(coords);
+      if (resolved?.label) {
+        setResolvedLabel(resolved.label);
       }
     } catch {
       // Retain existing label on failure
@@ -350,11 +346,7 @@ export function useLocationPinMap({
     setIsSearching(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(val.trim())}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults(data.results || []);
-        }
+        setSearchResults(await searchLocationSuggestions(val));
       } catch {
         setSearchResults([]);
       } finally {

@@ -12,10 +12,12 @@
     "test:fast": "bun run scripts/test-fast-pipeline.ts",
     "convex:dev": "bunx convex dev",
     "convex:codegen": "bunx convex codegen",
-    "scout:cli": "bun run scripts/test-search-cli.ts"
+    "scout:cli": "bun run scripts/test-search-cli.ts",
+    "deploy": "bunx @convex-dev/static-hosting deploy --dist ./out --build-command \"bun run build\""
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.75",
+    "@convex-dev/static-hosting": "^0.2.1",
     "@mendable/firecrawl-js": "^4.40.0",
     "@x402/fetch": "^2.26.0",
     "agentmail": "^0.5.27",

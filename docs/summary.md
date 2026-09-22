@@ -15,7 +15,7 @@ SideDoor is engineered strictly around a **Bun-native** modern web ecosystem:
 | Layer | Technology | Key Details |
 | :--- | :--- | :--- |
 | **Runtime & PM** | **Bun** (v1.4+) | Strictly Bun-native execution (`bun`, `bun --bun`, `bun add`, `bun run`); zero npm/yarn/pnpm footprint. |
-| **Framework** | **Next.js 16** | App Router with Turbopack bundler, React 19 Server/Client boundaries, streaming, and API route handlers. |
+| **Framework** | **Next.js 16** | App Router with Turbopack static export (`output: 'export'`) served seamlessly via `@convex-dev/static-hosting` on `https://<deployment>.convex.site`. |
 | **Language** | **TypeScript 7** | Strict type safety with native Go-based `tsgo` engine, zero `any` leakage in contracts, and end-to-end schema validation. |
 | **Styling & Tokens** | **Tailwind CSS v4** | Powered by Rust LightningCSS engine; strictly tokenized via CSS custom properties. |
 | **Linter** | **Oxlint** | High-performance Rust-based Oxc linter enforcing zero errors and zero warnings. |
@@ -34,17 +34,11 @@ SideDoor maintains a strict **Separation of Concerns** separating presentational
 
 ```
 src/
-├── app/                        # Next.js 16 App Router (RSC entry + Client Orchestrators)
+├── app/                        # Next.js 16 App Router (Static Export Client Orchestrators)
 │   ├── layout.tsx              # Ambient theme canvas, font definitions & ConvexClientProvider
-│   ├── page.tsx                # Root redirect (/main)
+│   ├── page.tsx                # Studio Landing (Editorial studio view)
 │   ├── main/                   # Studio Scout (/main) — Page entry & Client Orchestrator
-│   ├── radar/                  # Public Radar (/radar) — Page entry & Client Orchestrator
-│   └── api/                    # Thin HTTP API Boundaries
-│       ├── scout/route.ts      # Multi-stage discovery pipeline endpoint
-│       ├── img/route.ts        # Same-origin flyer image proxy & hotlink shield
-│       ├── geocode/route.ts    # Nominatim forward/reverse geocoding
-│       ├── locate/route.ts     # Geolocation to locality label resolver
-│       └── agent-mail/         # Outbound dispatch (/send) & Inbound webhook (/webhook)
+│   └── radar/                  # Public Radar (/radar) — Page entry & Client Orchestrator
 ├── components/                 # Presentational (Dumb) Components
 │   ├── ui/                     # EventImage flyer renderer, badges, buttons, modal wrappers
 │   ├── layout/                 # Header, nav tabs, shadow overlay animations
@@ -54,8 +48,8 @@ src/
 │   ├── drawers/                # ScoutFilterDrawer, OutboxDrawer (AgentMail threads)
 │   └── providers/              # ConvexClientProvider (reactive sync + offline graceful fallback)
 ├── hooks/                      # Business Logic & Custom Hooks
-│   ├── useEventDiscovery.ts    # Scout trigger, Convex batch mutations, client filtering & stats
-│   ├── useAgentMail.ts         # Outbox correspondence state, email dispatch & unread counts
+│   ├── useEventDiscovery.ts    # Scout trigger via Convex action, client filtering & stats
+│   ├── useAgentMail.ts         # Outbox correspondence state, Convex email dispatch action
 │   ├── useUserLocation.ts      # Geolocation tracking, reverse geocoding & manual overrides
 │   ├── useLocationPinMap.ts    # MapLibre map initialization, marker drag, and radius GeoJSON
 │   └── useLockBodyScroll.ts    # Modal and drawer scroll management
@@ -68,15 +62,20 @@ src/
 ├── lib/                        # Pure Utilities & Discovery Engine
 │   ├── discovery/              # Scout engine, query refiner, extraction, curator & geocoder
 │   ├── agent-mail/             # AgentMail client singleton & inbox provisioner
+│   ├── location.ts             # Direct Nominatim geocoding & IP auto-detection
 │   ├── schema-org.ts           # Lane A deterministic JSON-LD extractor & graph flattener
-│   ├── images.ts               # 4-layer flyer image harvesting, de-junking & HEAD validation
+│   ├── images.ts               # Flyer image harvesting, de-junking & HEAD validation
 │   ├── temporal.ts             # Deterministic calendar anchoring & weekend window calculation
 │   ├── geo.ts                  # Spherical Haversine distance & GeoJSON circle geometry
 │   ├── html.ts                 # HTML entity decoding & sanitization
 │   └── mapStyle.ts             # MapLibre vector style definitions
-└── convex/                     # Convex Reactive Backend
+└── convex/                     # Convex Reactive Backend & Static Hosting
+    ├── convex.config.ts        # Convex App config (@convex-dev/static-hosting component)
+    ├── http.ts                 # HTTP Router: AgentMail webhook & static site routes
     ├── schema.ts               # Database schema (events, threads, messages, scoutRuns)
     ├── events.ts               # Queries, indexed lookups, batch upserts, outreach updates
+    ├── scout.ts                # Autonomous scouting Convex Node action (Firecrawl + Gemini)
+    ├── agentMail.ts            # Autonomous email dispatch & replies Convex Node actions
     ├── threads.ts              # Two-way email correspondence queries & inbound mutations
     └── scoutRuns.ts            # Scout execution telemetry and pipeline logging
 ```
@@ -156,7 +155,7 @@ Because flyers originate from unstandardized third-party web sources, SideDoor u
 
 1. **Harvest & De-Junk (`lib/images.ts`)**: Collects candidates from `og:image`, `twitter:image`, JSON-LD `image`, Firecrawl `imageUrl`, and markdown image references. Excludes tracking pixels, 1x1 GIFs, SVGs, favicon assets, and relative links.
 2. **Server-Side Validation (`pickValidatedImage`)**: Performs rapid `HEAD` checks (with 1-byte ranged `GET` fallbacks) enforcing HTTP 200, valid `image/*` MIME type, and minimum byte size (5KB) within a 1200ms timeout.
-3. **Same-Origin Proxy Shield (`/api/img/route.ts`)**: Proxies remote images through a secure route handler with clean browser headers to bypass third-party hotlink restrictions.
+3. **Static Hotlink Shielding (`referrerPolicy="no-referrer"`)**: Remote images are fetched directly by the browser without referrer leakage to respect third-party hotlinking policies without requiring runtime Node proxy servers.
 4. **Resilient UI Renderer (`components/ui/EventImage.tsx`)**: The client component sequentially walks ranked candidate URLs on image error, rendering animated skeletons during loading and falling back to a deterministic typography monogram on complete failure.
 
 ---
@@ -169,23 +168,23 @@ SideDoor closes the loop between event discovery and real-world attendance throu
 [ User Clicks "Inquire via Scout" ]
                │
                ▼
- POST /api/agent-mail/send ─────────► AgentMail API Dispatch
-               │                              │
-               ▼                              ▼
- Convex `threads` & `messages`        Venue Organizer Inbox
- (Status: "pending")                          │
-                                              │ (Organizer replies)
-                                              ▼
- Convex `threads` updated ◄────────── POST /api/agent-mail/webhook
+Convex Action: `api.agentMail.sendInquiry` ──► AgentMail API Dispatch
+               │                                      │
+               ▼                                      ▼
+ Convex `threads` & `messages`               Venue Organizer Inbox
+ (Status: "pending")                                  │
+                                                      │ (Organizer replies)
+                                                      ▼
+ Convex `threads` updated ◄─────────── POST /agent-mail/webhook (Convex HTTP Router)
  (Status: "responded")
                │
                ▼
  Reactive Badge Notification in Header & OutboxDrawer
 ```
 
-- **Outbound Dispatch (`/api/agent-mail/send`)**: Resolves organizer contact info from event metadata, source domain heuristics (`info@<domain>`), or venue name sanitization, dispatching polite inquiries from the agent's provisioned inbox.
-- **Inbound Webhook (`/api/agent-mail/webhook`)**: Ingests incoming organizer replies via AgentMail webhooks, parses sender details and body content, and commits new messages into Convex `messages` while updating thread status to `responded`.
-- **Outbox Drawer (`components/drawers/OutboxDrawer.tsx`)**: Displays full multi-turn conversational threads, message timelines, and allows users to dispatch manual follow-up replies.
+- **Outbound Dispatch (`convex/agentMail.ts`)**: Resolves organizer contact info from event metadata, source domain heuristics (`info@<domain>`), or venue name sanitization, dispatching polite inquiries from the agent's provisioned inbox via the `api.agentMail.sendInquiry` action.
+- **Inbound Webhook (`convex/http.ts`)**: Ingests incoming organizer replies via the Convex HTTP router at `https://<deployment>.convex.site/agent-mail/webhook`, parses sender details and body content, and commits new messages into Convex `messages` while updating thread status to `responded`.
+- **Outbox Drawer (`components/drawers/OutboxDrawer.tsx`)**: Displays full multi-turn conversational threads, message timelines, and allows users to dispatch manual follow-up replies via `api.agentMail.sendReply`.
 
 ---
 
@@ -232,6 +231,9 @@ bun run build
 
 # Start Convex development watcher & codegen
 bun run convex:dev
+
+# Deploy full-stack app directly to convex.site
+bun run deploy
 
 # Test Suites & Verification Harnesses
 bun run test:firecrawl       # Direct Firecrawl search & photo extraction

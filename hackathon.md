@@ -135,6 +135,11 @@ The repository was built from the ground up specifically for the Convex All Gas 
 - `88a6cfb` & `033463f` **feat(discovery): add query batch dividers, batch dismissal, and batchId validator in Convex**: Clean UI batch segregation for consecutive scouting sessions.
 - `d43d654` & `f437f4b` **perf & fix: optimize crawl limit, streamline geocoding, sanitize HTML tags, clean venue names, and reject table headers**: Production-grade data hygiene.
 
+### Phase 7: Full-Stack Static Hosting Migration on Convex.site
+- **Serverless Convex Migration**: Transitioned all Next.js API routes (`/api/scout`, `/api/agent-mail/send`, `/api/agent-mail/webhook`, `/api/geocode`, `/api/locate`, `/api/img`) to Convex Node Actions (`api.scout.run`, `api.agentMail.sendInquiry`, `api.agentMail.sendReply`), Convex HTTP Actions (`POST /agent-mail/webhook`), and client-side Nominatim geocoding.
+- **`@convex-dev/static-hosting` Integration**: Mounted static hosting in `convex/convex.config.ts` and `convex/http.ts`, pairing with Next.js Turbopack static export (`output: 'export'`).
+- **Single Deployment Target**: Full-stack application deployed and hosted directly on `https://artful-octopus-475.convex.site`, eliminating any separate hosting provider.
+
 ---
 
 ## 💎 Design System & Aesthetic Principles
@@ -165,5 +170,5 @@ SideDoor adheres to the **Monochromatic Editorial Ink** design system, combining
 - [x] **AgentMail Inbox & Webhook**: Two-way email inquiry dispatch and real-time thread synchronization active.
 - [x] **Public Git Repository**: Clean, fully tracked, and synchronized with `origin/main`.
 - [x] **`hackathon.md`**: Fully detailed, evidence-based build log documenting architecture and git commit progression.
-- [x] **Live Deployment**: Ready for deployment on Convex / Vercel.
+- [x] **Live Deployment**: Live and operational full-stack on Convex (`https://artful-octopus-475.convex.site`).
 - [x] **Demo Video**: 3-minute presentation showcasing autonomous scouting, live Convex sync, and AgentMail correspondence.

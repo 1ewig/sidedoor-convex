@@ -115,8 +115,11 @@ bun run lint
 # Strict TypeScript type check
 bunx tsc --noEmit
 
-# Production Turbopack build
+# Production Turbopack build (static export)
 bun run build
+
+# Deploy full-stack application directly to convex.site
+bun run deploy
 ```
 
 ---

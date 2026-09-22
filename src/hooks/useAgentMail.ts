@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useAction, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useConvexConfig } from '@/components/providers/ConvexClientProvider';
@@ -23,8 +23,8 @@ export function useAgentMail() {
     api.threads.list,
     isConfigured && sessionId ? { sessionId } : 'skip'
   );
-  const createInquiryMutation = useMutation(api.threads.createInquiry);
-  const addMessageMutation = useMutation(api.threads.addMessage);
+  const sendInquiryAction = useAction(api.agentMail.sendInquiry);
+  const sendReplyAction = useAction(api.agentMail.sendReply);
 
   // Derive threads combining Convex reactive data with local optimistic state
   const threads = useMemo(() => {
@@ -114,19 +114,22 @@ export function useAgentMail() {
       setIsSending(true);
       setIsMailModalOpen(true);
 
-      // Call outbound AgentMail dispatch endpoint
-      fetch('/api/agent-mail/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event, questionBody }),
+      if (!isConfigured) {
+        setIsSending(false);
+        console.error('❌ [AgentMail] A Convex deployment is required before sending mail.');
+        return;
+      }
+
+      sendInquiryAction({
+        sessionId,
+        eventId: event.id,
+        eventTitle: event.title,
+        organizerName: event.organizerName,
+        organizerEmail: recipientEmail,
+        venueName: event.venueName,
+        sourceUrl: event.sourceUrl,
+        questionBody,
       })
-        .then(async (res) => {
-          if (!res.ok) {
-            const errData = await res.json().catch(() => null);
-            throw new Error(errData?.error || `AgentMail send failed (${res.status})`);
-          }
-          return res.json();
-        })
         .then((data) => {
           const agentmailThreadId = data?.agentmailThreadId;
           const resolvedAgentEmail = data?.agentEmail || 'scout@agentmail.to';
@@ -137,7 +140,7 @@ export function useAgentMail() {
               t.eventId === event.id
                 ? {
                     ...t,
-                    id: agentmailThreadId ? `th-${agentmailThreadId}` : t.id,
+                    id: data.threadId || (agentmailThreadId ? `th-${agentmailThreadId}` : t.id),
                     agentEmail: resolvedAgentEmail,
                     messages: t.messages.map((m) =>
                       m.sender === 'agent' ? { ...m, senderEmail: resolvedAgentEmail } : m
@@ -147,22 +150,6 @@ export function useAgentMail() {
             )
           );
 
-          // Sync to Convex if configured
-          if (isConfigured) {
-            createInquiryMutation({
-              sessionId,
-              eventId: event.id,
-              eventTitle: event.title,
-              organizerName: event.organizerName,
-              organizerEmail: recipientEmail,
-              agentEmail: resolvedAgentEmail,
-              subject: `Inquiry: ${event.title}`,
-              questionBody,
-              agentmailThreadId,
-            }).catch((err: unknown) => {
-              console.warn('⚠️ [Convex] Failed to persist inquiry:', err);
-            });
-          }
         })
         .catch((err) => {
           console.error('❌ [AgentMail] Error dispatching inquiry:', err);
@@ -176,9 +163,9 @@ export function useAgentMail() {
         });
     },
     [
-      createInquiryMutation,
       isConfigured,
       sessionId,
+      sendInquiryAction,
       setLocalThreads,
       setSelectedThreadId,
       threads,
@@ -214,42 +201,16 @@ export function useAgentMail() {
         )
       );
 
-      if (targetThread) {
-        // Send via /api/agent-mail/send
-        fetch('/api/agent-mail/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event: {
-              id: targetThread.eventId,
-              title: targetThread.eventTitle,
-              organizerName: targetThread.organizerName,
-              organizerEmail: targetThread.organizerEmail,
-            },
-            questionBody: text,
-            isReply: true,
-          }),
-        }).catch((err) => {
-          console.warn('⚠️ [AgentMail] Failed to send reply via API:', err);
-        });
-      }
-
       if (isConfigured && !threadId.startsWith('th-')) {
-        // If it's a real Convex Id
-        addMessageMutation({
+        sendReplyAction({
           threadId: threadId as Id<'threads'>,
-          sender: 'agent',
-          senderName: 'You (via SideDoor)',
-          senderEmail: activeAgentEmail,
-          subject: 'Re: Inquiry',
-          body: text,
-          status: 'pending',
+          text,
         }).catch((err: unknown) => {
-          console.warn('⚠️ [Convex] Failed to save reply message:', err);
+          console.warn('⚠️ [AgentMail] Failed to send reply:', err);
         });
       }
     },
-    [addMessageMutation, isConfigured, setLocalThreads, threads]
+    [isConfigured, sendReplyAction, setLocalThreads, threads]
   );
 
   return {
